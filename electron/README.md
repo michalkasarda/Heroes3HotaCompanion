@@ -102,6 +102,19 @@ count as passed automatically. Routing treats locked guards as walls.
 
 ![Skills](docs/skills.png)
 
+## Updates
+
+The app keeps its map data in sync with this repository on its own: on every start it
+compares the files under `app/` with the `main` branch and downloads only what changed
+(usually a few hundred kilobytes), then reloads. So fixes to the page, routing, data or
+tooltips reach you without downloading a new installer. File > "Update map data automatically"
+turns it off; "Check for map data updates now" forces a check; "Reset map data to bundled
+files" goes back to what the installer shipped.
+
+New installers (needed only when the Electron shell itself changes) are picked up by the
+built-in app updater from the Releases page; it downloads in the background and installs on
+quit.
+
 ## Limits
 
 - Keys are not stored in the savegame in any form I could find, so tick them yourself.

@@ -219,6 +219,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
 #menu .mr:hover{color:var(--gold);border-color:var(--gold);}
 #menu .mh{padding:6px 10px 2px;color:var(--gold);font-size:11px;letter-spacing:.05em;text-transform:uppercase;}
 #menu .mi.sep{border-top:1px solid var(--line);margin-top:2px;}
+#toast{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);z-index:20;background:var(--gold);color:#1a1409;font-weight:600;padding:8px 16px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.5);pointer-events:none;}
 #tip .tn{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:14px;color:var(--gold);margin-bottom:3px;}
 #tip .tt{color:var(--muted);font-size:11px;margin-bottom:4px;}
 #tip .tx{line-height:1.35;}
@@ -365,6 +366,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
   <div class="modebar"><div class="mrow" role="group" aria-label="View mode"><button id="mode-map" class="on">Map</button><button id="mode-game" disabled title="Load a save first">Game</button><span class="pdots" id="pdots" role="group" aria-label="Your player"></span><span id="mode-info"></span></div><div class="mrow lv" role="group" aria-label="Level"><button id="lv-ow" class="on">Surface</button><button id="lv-ug">Underground</button></div></div>
   <div class="zoom"><button id="z-in" aria-label="Zoom in">+</button><button id="z-out" aria-label="Zoom out">&minus;</button><button id="z-fit" aria-label="Fit map" style="font-size:12px">fit</button></div>
   <div id="tip" hidden></div>
+  <div id="toast" hidden></div>
   <div id="menu" hidden></div>
   <div id="status"><span>Tile <b id="s-xy">-</b></span><span>Zoom <b id="s-z">-</b></span><span id="s-sel"></span></div>
 </div>
@@ -606,6 +608,7 @@ function hitTest(mx, my) {
   return null;
 }
 const tip = document.getElementById('tip');
+let toastT = null; window.__toast = msg => { const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 4000); };
 function showTip(h, cx, cy) {
   let html = '';
   const sw = p => `<span class="sw" style="background:${p < 8 ? PLCOL[p] : '#999'}"></span>${p < 8 ? PLAYER[p] : 'neutral'}`;
