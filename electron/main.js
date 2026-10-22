@@ -1,4 +1,7 @@
 const { app, BrowserWindow, dialog, Menu, shell } = require('electron');
+const crypto = require('crypto');
+const { checkAndUpdate, readManifest } = require('./updater');
+let autoUpdater = null; try { autoUpdater = require('electron-updater').autoUpdater; } catch (e) {}
 // AppImage on Ubuntu 24.04+: AppArmor blocks the SUID/userns sandbox, so run unsandboxed on Linux
 if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');
 const http = require('http');
@@ -6,10 +9,32 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const APP_DIR = path.join(__dirname, 'app');
+const BUNDLED_DIR = path.join(__dirname, 'app');
+let APP_DIR = BUNDLED_DIR;
 const CONFIG = path.join(app.getPath('userData'), 'config.json');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.css': 'text/css' };
 
+function blobSha(buf) { return crypto.createHash('sha1').update('blob ' + buf.length + '\0').update(buf).digest('hex'); }
+// Content lives in userData/content, seeded from the bundled app/ on first run, then kept in sync with the repo.
+function seedContent() {
+  const dir = path.join(app.getPath('userData'), 'content');
+  if (!readManifest(dir)) {
+    fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    const files = {};
+    for (const f of fs.readdirSync(BUNDLED_DIR)) { const b = fs.readFileSync(path.join(BUNDLED_DIR, f)); fs.writeFileSync(path.join(dir, f), b); files[f] = blobSha(b); }
+    fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ commit: null, files }));
+  }
+  return dir;
+}
+function toast(msg) { if (win) win.webContents.executeJavaScript(`typeof __toast === 'function' && __toast(${JSON.stringify(msg)})`).catch(() => {}); }
+async function updateContent(manual) {
+  const cfg = readConfig(); if (!manual && cfg.autoUpdate === false) return;
+  try {
+    const r = await checkAndUpdate(APP_DIR, (n, t, p) => { if (n === 1 || n % 10 === 0 || n === t) toast(`Updating map data ${n}/${t}...`); });
+    if (r.updated) { toast('Map data updated, reloading...'); setTimeout(() => win && win.webContents.reload(), 1200); }
+    else if (manual) toast('Map data is up to date.');
+  } catch (e) { if (manual) toast('Update check failed: ' + e.message); }
+}
 function readConfig() { try { return JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch (e) { return {}; } }
 function writeConfig(c) { fs.mkdirSync(path.dirname(CONFIG), { recursive: true }); fs.writeFileSync(CONFIG, JSON.stringify(c, null, 2)); }
 
@@ -82,17 +107,27 @@ function startServer() {
 }
 
 app.whenReady().then(async () => {
+  try { APP_DIR = seedContent(); } catch (e) { APP_DIR = BUNDLED_DIR; }
   const port = await startServer();
   win = new BrowserWindow({ width: 1600, height: 950, minWidth: 900, minHeight: 600, backgroundColor: '#17120e', title: 'Heroes 3 HotA Companion', autoHideMenuBar: false, webPreferences: { contextIsolation: true, nodeIntegration: false } });
   const menu = Menu.buildFromTemplate([
     { label: 'File', submenu: [
       { label: 'Choose saves folder...', click: async () => { await pickFolder(); win.webContents.executeJavaScript('typeof srvRefresh === "function" && srvRefresh()'); } },
       { label: 'Reload', role: 'reload' },
+      { type: 'separator' },
+      { label: 'Check for map data updates now', click: () => updateContent(true) },
+      { label: 'Update map data automatically', type: 'checkbox', checked: readConfig().autoUpdate !== false, click: mi => { const c = readConfig(); c.autoUpdate = mi.checked; writeConfig(c); } },
+      { label: 'Check for app update (new installer)', click: () => { if (!autoUpdater) return toast('Updater not available in this build.'); autoUpdater.checkForUpdatesAndNotify().catch(e => toast('App update check failed: ' + e.message)); } },
+      { label: 'Reset map data to bundled files', click: () => { fs.rmSync(path.join(app.getPath('userData'), 'content'), { recursive: true, force: true }); APP_DIR = seedContent(); win.webContents.reload(); } },
       { type: 'separator' }, { role: 'quit' } ] },
     { label: 'View', submenu: [ { role: 'togglefullscreen' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' }, { type: 'separator' }, { role: 'toggleDevTools' } ] },
   ]);
   Menu.setApplicationMenu(menu);
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
   win.loadURL('http://127.0.0.1:' + port + '/');
+  win.webContents.once('did-finish-load', () => {
+    setTimeout(() => updateContent(false), 1500);
+    if (autoUpdater && app.isPackaged) { autoUpdater.autoDownload = true; autoUpdater.on('update-downloaded', info => toast(`App update ${info.version} downloaded, installs when you quit.`)); autoUpdater.checkForUpdatesAndNotify().catch(() => {}); }
+  });
 });
 app.on('window-all-closed', () => app.quit());
