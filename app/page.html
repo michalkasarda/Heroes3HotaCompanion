@@ -703,7 +703,10 @@ function showTipHtml(html, cx, cy, isArt) {
 }
 document.addEventListener('pointerdown', e => { if (e.button !== 2) return; const el = e.target.closest('[data-art]'); if (!el) return; e.preventDefault(); showTipHtml(artTipHtml(+el.dataset.art, el.dataset.artwhere || ''), e.clientX, e.clientY, true); tipHold = true; });
 document.addEventListener('contextmenu', e => { if (e.target.closest('[data-art]')) e.preventDefault(); });
-document.addEventListener('pointerup', () => { if (tipHold) { tipHold = false; tip.hidden = true; } });
+// hide the held tooltip on any release, in the capture phase so no element can swallow the event; also when the window loses focus or the pointer leaves it
+const tipRelease = () => { if (tipHold) { tipHold = false; tip.hidden = true; } };
+for (const ev of ['pointerup', 'mouseup', 'pointercancel']) window.addEventListener(ev, tipRelease, true);
+window.addEventListener('blur', tipRelease); document.addEventListener('mouseleave', tipRelease);
 function tipAt(cx, cy) { const r = view.getBoundingClientRect(); const h = hitTest((cx - r.left - tx) / s, (cy - r.top - ty) / s); if (h) showTip(h, cx, cy); else tip.hidden = true; }
 function drawObjects() {
   const w = view.clientWidth, h = view.clientHeight;
