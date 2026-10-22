@@ -322,7 +322,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       
       <div id="srv-ui" hidden>
         <div class="row"><span id="srv-path" class="hint2 tiny" style="word-break:break-all"></span></div>
-        <div class="btns"><button class="btn" id="srv-refresh">Refresh list</button><button class="btn" id="srv-latest">Load newest</button><button class="btn" id="srv-pick" hidden>Choose folder...</button></div>
+        <div class="btns"><button class="btn" id="srv-refresh">Refresh list</button><button class="btn" id="srv-latest">Load newest</button><button class="btn" id="srv-pick" hidden>Choose folder...</button><button class="btn" id="srv-find" hidden>Find saves on this PC</button></div>
         <ul class="savelist" id="srv-list"></ul>
       </div>
       <div id="file-ui">
@@ -1230,7 +1230,14 @@ async function srvLoad(name) {
   const r = await fetch('/api/save/' + encodeURIComponent(name)); const b = await r.arrayBuffer(); loadSave(b, name);
 }
 document.getElementById('srv-refresh').addEventListener('click', () => srvRefresh().catch(() => {}));
-fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = document.getElementById('srv-pick'); b.hidden = false; b.addEventListener('click', () => fetch('/api/pick').then(() => srvRefresh()).catch(() => {})); if (!j.dir) document.getElementById('save-status').textContent = 'No Heroes 3 saves folder found. Use Choose folder...'; } }).catch(() => {});
+fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = document.getElementById('srv-pick'); b.hidden = false; b.addEventListener('click', () => fetch('/api/pick').then(() => srvRefresh()).catch(() => {}));
+    const f = document.getElementById('srv-find'); f.hidden = false; f.addEventListener('click', async e => {
+      document.getElementById('save-status').textContent = 'Scanning for save folders (up to 20 s)...';
+      const r = await fetch('/api/find').then(r => r.json()).catch(() => ({folders: []}));
+      if (!r.folders.length) { document.getElementById('save-status').textContent = 'No .GM1 files found in the usual places. Use Choose folder... and point at your Heroes 3 Games folder.'; return; }
+      document.getElementById('save-status').textContent = r.folders.length + ' folder(s) with saves found, pick one:';
+      openMenu(r.folders.map(fo => ({label: fo.dir, sub: `${fo.count} saves, newest ${new Date(fo.newest).toLocaleString()}`, run: () => fetch('/api/use/' + encodeURIComponent(fo.dir)).then(() => srvRefresh()).catch(() => {})})), e.clientX, e.clientY);
+    }); if (!j.dir) document.getElementById('save-status').textContent = 'No Heroes 3 saves folder found. Use Choose folder...'; } }).catch(() => {});
 document.getElementById('srv-latest').addEventListener('click', async () => { await srvRefresh().catch(() => {}); if (srvSaves[0]) srvLoad(srvSaves[0].name); });
 srvRefresh().then(() => { document.getElementById('srv-ui').hidden = false; document.getElementById('file-ui').hidden = true; showTab('save'); }).catch(() => {});
 document.getElementById('g-import').addEventListener('click', () => { if (!SAVE) return; let n = 0; for (const p of QUESTS) if (SAVE.present[p.oi] === 0 && !prog.done[spKey(p)]) { prog.done[spKey(p)] = true; n++; } saveProg(); paintGuards(); refreshQuests(); document.getElementById('save-status').innerHTML += ` Imported ${n} passed quest guards.`; });

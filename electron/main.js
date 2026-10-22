@@ -76,6 +76,32 @@ function listSaves(dir) {
   return out;
 }
 
+// Scan likely roots for folders that contain .GM1 saves (depth-limited), newest first.
+function findSaveFolders() {
+  const home = os.homedir(); const roots = [];
+  if (process.platform === 'win32') {
+    for (const d of ['C', 'D', 'E', 'F']) { for (const sub of ['Games', 'GOG Games', 'Program Files (x86)', 'Program Files', 'Heroes3', 'HoMM3', 'Steam']) roots.push(d + ':\\' + sub); }
+    roots.push(path.join(home, 'AppData', 'Local', 'VirtualStore'), path.join(home, 'Documents'), path.join(home, 'Documents', 'My Games'), path.join(home, 'Saved Games'), path.join(home, 'Games'), path.join(home, 'Desktop'), path.join(home, 'Downloads'));
+  } else {
+    roots.push(path.join(home, '.var', 'app'), path.join(home, '.wine', 'drive_c'), path.join(home, 'Games'), path.join(home, '.local', 'share'), path.join(home, 'Documents'));
+  }
+  const found = new Map(); const deadline = Date.now() + 20000;
+  const walk = (d, depth) => {
+    if (depth > 7 || Date.now() > deadline) return;
+    let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    let n = 0, newest = 0;
+    for (const e of ents) {
+      if (e.isFile() && /\.gm[12]$/i.test(e.name)) { n++; try { newest = Math.max(newest, fs.statSync(path.join(d, e.name)).mtimeMs); } catch (x) {} }
+    }
+    if (n) found.set(d, { dir: d, count: n, newest });
+    for (const e of ents) if (e.isDirectory() && !e.isSymbolicLink() && !/^(node_modules|\.git|Windows|System32|\$Recycle\.Bin)$/i.test(e.name)) walk(path.join(d, e.name), depth + 1);
+  };
+  for (const r of roots) walk(r, 0);
+  // collapse map subfolders into their parent Games folder when both exist
+  const out = [...found.values()].filter(f => !found.has(path.dirname(f.dir)) || /games$/i.test(path.basename(f.dir)));
+  for (const f of found.values()) { const p = path.dirname(f.dir); if (found.has(p)) { const q = found.get(p); q.count += f.count; q.newest = Math.max(q.newest, f.newest); } }
+  return out.sort((a, b) => b.newest - a.newest);
+}
 let win = null;
 async function pickFolder() {
   const r = await dialog.showOpenDialog(win, { title: 'Choose the Heroes 3 Games folder (where .GM1 saves are)', properties: ['openDirectory'] });
@@ -90,6 +116,8 @@ function startServer() {
       const json = (code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': b.length }); res.end(b); };
       if (url === '/api/info') return json(200, { electron: true, pick: true, dir: savesDir() });
       if (url === '/api/pick') { const d = await pickFolder(); return json(200, { dir: d || savesDir() }); }
+      if (url === '/api/find') return json(200, { folders: findSaveFolders() });
+      if (url.startsWith('/api/use/')) { const d = url.slice('/api/use/'.length); if (!fs.existsSync(d)) return json(404, { error: 'missing' }); const cfg = readConfig(); cfg.dir = d; writeConfig(cfg); return json(200, { dir: d }); }
       if (url === '/api/saves') { const d = savesDir(); return json(200, { dir: d || '', saves: d ? listSaves(d) : [] }); }
       if (url.startsWith('/api/save/')) {
         const d = savesDir(); if (!d) return json(404, { error: 'no folder' });
