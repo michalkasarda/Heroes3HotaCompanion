@@ -81,7 +81,7 @@ function startServer() {
 
 app.whenReady().then(async () => {
   const port = await startServer();
-  win = new BrowserWindow({ width: 1600, height: 950, minWidth: 900, minHeight: 600, backgroundColor: '#17120e', title: 'Mysterious Island Atlas', autoHideMenuBar: false, webPreferences: { contextIsolation: true, nodeIntegration: false } });
+  win = new BrowserWindow({ width: 1600, height: 950, minWidth: 900, minHeight: 600, backgroundColor: '#17120e', title: 'Heroes 3 HotA Companion', autoHideMenuBar: false, webPreferences: { contextIsolation: true, nodeIntegration: false } });
   const menu = Menu.buildFromTemplate([
     { label: 'File', submenu: [
       { label: 'Choose saves folder...', click: async () => { await pickFolder(); win.webContents.executeJavaScript('typeof srvRefresh === "function" && srvRefresh()'); } },

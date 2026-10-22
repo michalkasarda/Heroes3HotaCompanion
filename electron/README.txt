@@ -1,11 +1,11 @@
-Mysterious Island Atlas
+Heroes 3 HotA Companion
 =======================
 Interactive atlas for the Heroes of Might and Magic III: Horn of the Abyss map
 "The Mysterious Island" (v1-5-j), with savegame import.
 
 Run
-  Windows: unzip, start "Mysterious Island Atlas.exe"
-  Linux:   unzip, run ./"Mysterious Island Atlas"
+  Windows: unzip, start "Heroes 3 HotA Companion.exe"
+  Linux:   unzip, run ./"Heroes 3 HotA Companion"
 
 Saves
   The app looks for your Heroes 3 "Games" folder automatically (GOG, Steam HD,
