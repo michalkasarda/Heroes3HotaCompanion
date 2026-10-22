@@ -629,7 +629,7 @@ async function ensureSprites(names) {
   SPR.atlas = j.atlas; SPR.keys = j.keys; SPR.pages = j.pages; await loadPages(j); requestDraw();
 }
 function prepObjects() {
-  for (const o of SPR.objs) { const at = SPR.atlas[SPR.keys[o[3]]]; OBJ[o[2]].push({x: o[0], y: o[1], oi: o[4], cls: o[5], at, left: (o[0] + 1) * 32 - at.w, top: (o[1] + 1) * 32 - at.h}); }
+  for (const o of SPR.objs) { const at = SPR.atlas[SPR.keys[o[3]]]; if (!at) continue; OBJ[o[2]].push({x: o[0], y: o[1], oi: o[4], cls: o[5], at, left: (o[0] + 1) * 32 - at.w, top: (o[1] + 1) * 32 - at.h}); }
 }
 function requestDraw() { if (drawReq) return; drawReq = true; requestAnimationFrame(() => { drawReq = false; drawObjects(); }); }
 const tmpc = document.createElement('canvas'), tctx = tmpc.getContext('2d');
