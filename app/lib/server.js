@@ -15,6 +15,8 @@ function findGameDir(hints) {
   for (const h of hints) { if (!h) continue; let d = h; for (let i = 0; i < 4 && d; i++) { if (fs.existsSync(path.join(d, 'Data', 'H3sprite.lod'))) return d; const p = path.dirname(d); if (p === d) break; d = p; } }
   return null;
 }
+// a map subfolder inside Games (HotA keeps saves per map) means the Games folder itself
+function normSaves(d) { if (!d) return d; const parent = path.dirname(d); return /^games$/i.test(path.basename(parent)) && !/^games$/i.test(path.basename(d)) ? parent : d; }
 function listMaps(dirs) {
   const out = [];
   for (const d of dirs) { if (!d || !fs.existsSync(d)) continue; for (const f of fs.readdirSync(d)) if (/\.h3m$/i.test(f)) { const p = path.join(d, f); const st = fs.statSync(p); out.push({ file: p, name: f.replace(/\.h3m$/i, ''), mtime: st.mtimeMs, size: st.size }); } }
@@ -56,11 +58,11 @@ function createServer(opts) {
         if (url === '/api/map/icons') return st.icons ? raw(st.icons.buf) : json(404, {});
         if (url === '/api/map/iconsmeta') return st.icons ? json(200, { w: st.icons.w, h: st.icons.h, cols: st.icons.cols }) : json(404, {});
       }
-      if (url === '/api/pick') { const d = opts.onPick ? await opts.onPick('saves') : null; return json(200, { dir: d || opts.getSavesDir() }); }
+      if (url === '/api/pick') { const d = normSaves(opts.onPick ? await opts.onPick('saves') : null); if (d) opts.setSavesDir(d); return json(200, { dir: d || opts.getSavesDir() }); }
       if (url === '/api/pickgame') { const d = opts.onPick ? await opts.onPick('game') : null; st.gd = null; st.terrain = null; st.icons = null; return json(200, { gameDir: d || opts.getGameDir() }); }
-      if (url === '/api/find') return json(200, { folders: opts.onFind ? opts.onFind() : [] });
-      if (url.startsWith('/api/use/')) { const d = url.slice('/api/use/'.length); if (!fs.existsSync(d)) return json(404, { error: 'missing' }); opts.setSavesDir(d); return json(200, { dir: d }); }
-      if (url === '/api/saves') { const d = opts.getSavesDir(); return json(200, { dir: d || '', saves: d ? opts.listSaves(d) : [] }); }
+      if (url === '/api/find') { const seen = new Map(); for (const f of opts.onFind ? opts.onFind() : []) { const d = normSaves(f.dir); const q = seen.get(d); if (q) { q.count += f.count; q.newest = Math.max(q.newest, f.newest); } else seen.set(d, Object.assign({}, f, { dir: d })); } return json(200, { folders: [...seen.values()].sort((a, b) => b.newest - a.newest) }); }
+      if (url.startsWith('/api/use/')) { const d = normSaves(url.slice('/api/use/'.length)); if (!fs.existsSync(d)) return json(404, { error: 'missing' }); opts.setSavesDir(d); return json(200, { dir: d }); }
+      if (url === '/api/saves') { const d = normSaves(opts.getSavesDir()); return json(200, { dir: d || '', saves: d ? opts.listSaves(d) : [] }); }
       if (url.startsWith('/api/save/')) { const d = opts.getSavesDir(); if (!d) return json(404, { error: 'no folder' }); const p = path.normalize(path.join(d, url.slice('/api/save/'.length))); if (!p.startsWith(path.normalize(d)) || !fs.existsSync(p)) return json(404, { error: 'not found' }); return raw(fs.readFileSync(p)); }
       if (url === '/' || url === '/index.html') {
         if (!st.map) { res.writeHead(302, { Location: '/start.html' }); return res.end(); }
