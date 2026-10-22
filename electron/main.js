@@ -92,6 +92,7 @@ app.whenReady().then(async () => {
       { label: 'Check for app file updates now', click: () => updateContent(true) },
       { label: 'Update app files automatically', type: 'checkbox', checked: readConfig().autoUpdate !== false, click: mi => { const c = readConfig(); c.autoUpdate = mi.checked; writeConfig(c); } },
       { label: 'Check for new installer', click: () => { if (!autoUpdater) return toast('Updater not available in this build.'); autoUpdater.checkForUpdatesAndNotify().catch(e => toast('App update check failed: ' + e.message)); } },
+      { label: 'Toggle developer tools', accelerator: 'F12', click: () => win.webContents.toggleDevTools() },
       { label: 'Open logs and settings folder', click: () => shell.openPath(app.getPath('userData')) },
       { label: 'Reset app files to bundled version', click: () => { fs.rmSync(path.join(app.getPath('userData'), 'content'), { recursive: true, force: true }); app.relaunch(); app.quit(); } },
       { type: 'separator' }, { role: 'quit' } ] },

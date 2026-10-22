@@ -606,18 +606,24 @@ const objc = document.getElementById('objc'), octx = objc.getContext('2d');
 let ownByOi = null;
 const NEUTRAL = '#b8b8b8';
 let pagesVersion = -1;
+const DIAG = {errors: [], pages: []};
+window.addEventListener('error', e => DIAG.errors.push(e.message + ' @' + e.lineno));
+window.addEventListener('unhandledrejection', e => DIAG.errors.push('rejection: ' + (e.reason && e.reason.message || e.reason)));
 async function loadPages(meta) {
   if (meta.version === pagesVersion) return; pagesVersion = meta.version;
   const S = meta.size; const np = [], nf = [];
   for (let p = 0; p < meta.pages; p++) {
-    const [a, f] = await Promise.all([fetch('/api/map/atlas/' + p).then(r => r.arrayBuffer()), fetch('/api/map/flag/' + p).then(r => r.arrayBuffer())]);
+    const [ra, rf] = await Promise.all([fetch('/api/map/atlas/' + p), fetch('/api/map/flag/' + p)]);
+    const [a, f] = await Promise.all([ra.arrayBuffer(), rf.arrayBuffer()]);
+    DIAG.pages.push(p + ':' + ra.status + ':' + a.byteLength + '/' + rf.status + ':' + f.byteLength);
+    if (a.byteLength !== S * S * 4 || f.byteLength !== S * S) { DIAG.errors.push('atlas page ' + p + ' wrong size'); continue; }
     const c = document.createElement('canvas'); c.width = S; c.height = S; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(a), S, S), 0, 0); np.push(c);
     const fa = new Uint8Array(f), fr = new Uint8ClampedArray(S * S * 4); for (let i = 0; i < S * S; i++) { fr[4 * i] = fr[4 * i + 1] = fr[4 * i + 2] = 255; fr[4 * i + 3] = fa[i]; }
     const fc = document.createElement('canvas'); fc.width = S; fc.height = S; fc.getContext('2d').putImageData(new ImageData(fr, S, S), 0, 0); nf.push(fc);
   }
-  PAGES.length = 0; FLAGS.length = 0; PIX.length = 0; PAGES.push(...np); FLAGS.push(...nf);
+  PAGES.length = 0; FLAGS.length = 0; PIX.length = 0; PAGES.push(...np); FLAGS.push(...nf); showVersion();
 }
-fetch('/api/map/sprites').then(r => r.json()).then(async j => { SPR = j; await loadPages(j); prepObjects(); requestDraw(); }).catch(() => {});
+fetch('/api/map/sprites').then(r => r.json()).then(async j => { SPR = j; await loadPages(j); prepObjects(); requestDraw(); }).catch(e => { DIAG.errors.push('sprites: ' + e.message); showVersion(); });
 async function ensureSprites(names) {
   if (!SPR) return; const j = await fetch('/api/map/ensure', {method: 'POST', body: JSON.stringify(names)}).then(r => r.json());
   SPR.atlas = j.atlas; SPR.keys = j.keys; SPR.pages = j.pages; await loadPages(j); requestDraw();
@@ -1333,7 +1339,7 @@ async function srvLoad(name) {
 }
 document.getElementById('srv-refresh').addEventListener('click', () => srvRefresh().catch(() => {}));
 document.getElementById('srv-start').addEventListener('click', () => { location.href = '/start.html'; });
-function showVersion() { fetch('/api/info').then(r => r.json()).then(j => { if (!j.version) return; const c = j.content || {}, u = j.update || {}; document.getElementById('srv-ver').textContent = `App v${j.version} \u00b7 files ${c.commit ? c.commit.slice(0, 7) + ' from ' + new Date(c.date).toLocaleString() : 'bundled'} \u00b7 update: ${u.status}${u.error ? ' (' + u.error + ')' : ''} \u00b7 game data: ${j.gameDir || 'not found'}${j.data ? ' (' + j.data.lods.join(', ') + '; ' + j.data.defs + ' bundled sprites)' : ''}${j.sprites ? ' \u00b7 sprites found ' + j.sprites.found + '/' + j.sprites.keys + (j.sprites.missing.length ? ' (missing: ' + j.sprites.missing.slice(0, 12).join(', ') + (j.sprites.missing.length > 12 ? ', ...' : '') + ')' : '') : ''}`; }).catch(() => {}); }
+function showVersion() { fetch('/api/info').then(r => r.json()).then(j => { if (!j.version) return; const c = j.content || {}, u = j.update || {}; document.getElementById('srv-ver').textContent = `App v${j.version} \u00b7 files ${c.commit ? c.commit.slice(0, 7) + ' from ' + new Date(c.date).toLocaleString() : 'bundled'} \u00b7 update: ${u.status}${u.error ? ' (' + u.error + ')' : ''} \u00b7 game data: ${j.gameDir || 'not found'}${j.data ? ' (' + j.data.lods.join(', ') + '; ' + j.data.defs + ' bundled sprites)' : ''}${j.sprites ? ' \u00b7 sprites found ' + j.sprites.found + '/' + j.sprites.keys + (j.sprites.missing.length ? ' (missing: ' + j.sprites.missing.slice(0, 12).join(', ') + (j.sprites.missing.length > 12 ? ', ...' : '') + ')' : '') : ''} \u00b7 atlas pages in browser ${PAGES.length}/${SPR ? SPR.pages : '?'} [${DIAG.pages.join(' ')}]${DIAG.errors.length ? ' \u00b7 errors: ' + DIAG.errors.slice(0, 6).join(' | ') : ''}`; }).catch(() => {}); }
 showVersion(); setInterval(showVersion, 5000);
 fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = document.getElementById('srv-pick'); b.hidden = false; b.addEventListener('click', () => fetch('/api/pick').then(() => srvRefresh()).catch(() => {}));
     const f = document.getElementById('srv-find'); f.hidden = false; f.addEventListener('click', async e => {
