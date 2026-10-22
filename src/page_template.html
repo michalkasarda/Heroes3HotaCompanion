@@ -81,7 +81,8 @@ h1{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacin
 #list .m{grid-column:1/3;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;display:flex;gap:8px;}
 #list .lv{padding:0 6px;border-radius:999px;border:1px solid var(--line);}
 #list .empty{color:var(--muted);padding:14px 10px;cursor:default;}
-#view{position:relative;overflow:hidden;background:#000;touch-action:none;cursor:grab;outline:none;}
+#view{position:relative;overflow:hidden;background:#000;touch-action:none;cursor:grab;outline:none;user-select:none;-webkit-user-drag:none;}
+#view img,#view canvas,#view svg{-webkit-user-drag:none;user-select:none;}
 #view.drag{cursor:grabbing;}
 #view:focus-visible{box-shadow:inset 0 0 0 2px var(--focus);}
 #stage,#mstage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
@@ -398,7 +399,7 @@ let prog = progAll[curPlayer];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 for (const lv of ['ow', 'ug']) {
-  const mini = new Image(); mini.className = 'mini'; mini.src = lv + '_mini.webp'; mini.width = PX; mini.height = PX; layers[lv].appendChild(mini);
+  const mini = new Image(); mini.className = 'mini'; mini.draggable = false; mini.src = lv + '_mini.webp'; mini.width = PX; mini.height = PX; layers[lv].appendChild(mini);
 }
 const mkEls = new Map();
 for (const a of arts) {
@@ -428,7 +429,7 @@ function loadTiles() {
     const k = xx + '_' + yy;
     if (loaded[level].has(k)) continue;
     loaded[level].add(k);
-    const im = new Image(); im.src = `${level}_${xx}_${yy}.webp`; im.width = TS; im.height = TS;
+    const im = new Image(); im.draggable = false; im.src = `${level}_${xx}_${yy}.webp`; im.width = TS; im.height = TS;
     im.style.left = xx * TS + 'px'; im.style.top = yy * TS + 'px'; im.decoding = 'async';
     layers[level].appendChild(im);
   }
@@ -519,6 +520,7 @@ document.getElementById('z-fit').addEventListener('click', fit);
 // pan / zoom input
 const ptrs = new Map(); let last = null, pinch = null;
 document.body.appendChild(document.getElementById('menu'));
+view.addEventListener('dragstart', e => e.preventDefault());
 for (const el of document.querySelectorAll('.modebar, .zoom, #status, #menu')) { for (const ev of ['pointerdown', 'pointerup', 'pointermove', 'wheel']) el.addEventListener(ev, e => e.stopPropagation()); }
 let tipHold = false;
 view.addEventListener('pointerdown', e => {
