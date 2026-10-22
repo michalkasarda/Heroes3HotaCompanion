@@ -18,12 +18,14 @@ function blobSha(buf) { return crypto.createHash('sha1').update('blob ' + buf.le
 // content: userData/content mirrors the repo's app/ folder, seeded from the bundled copy
 function seedContent() {
   const dir = path.join(app.getPath('userData'), 'content');
-  if (!readManifest(dir)) {
+  const mf = readManifest(dir);
+  if (!mf || mf.version !== app.getVersion()) {
+    logLine('seeding app files from the bundled copy (installed ' + app.getVersion() + ', content ' + (mf ? mf.version : 'none') + ')');
     fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
     const files = {};
     const walk = (src, rel) => { for (const e of fs.readdirSync(src, { withFileTypes: true })) { const r = rel ? rel + '/' + e.name : e.name; if (e.isDirectory()) { fs.mkdirSync(path.join(dir, r), { recursive: true }); walk(path.join(src, e.name), r); } else { const b = fs.readFileSync(path.join(src, e.name)); fs.writeFileSync(path.join(dir, r), b); files[r] = blobSha(b); } } };
     walk(BUNDLED_DIR, '');
-    fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ commit: null, files }));
+    fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ commit: null, version: app.getVersion(), files }));
   }
   return dir;
 }
@@ -66,9 +68,14 @@ async function pickFolder(kind) {
   const cfg = readConfig(); if (kind === 'game') cfg.gameDir = r.filePaths[0]; else cfg.dir = r.filePaths[0]; writeConfig(cfg); return r.filePaths[0];
 }
 
+function fatal(e) { logLine('FATAL ' + (e && e.stack || e)); dialog.showErrorBox('Heroes 3 HotA Companion could not start', String(e && e.stack || e) + '\n\nLog: ' + path.join(app.getPath('userData'), 'update.log')); app.exit(1); }
+process.on('uncaughtException', fatal); process.on('unhandledRejection', fatal);
 app.whenReady().then(async () => {
-  try { APP_DIR = seedContent(); } catch (e) { APP_DIR = BUNDLED_DIR; }
-  const { createServer, listSaves } = require(path.join(APP_DIR, 'lib', 'server.js'));
+  try { APP_DIR = seedContent(); } catch (e) { logLine('seeding failed, using bundled files: ' + e.message); APP_DIR = BUNDLED_DIR; }
+  let serverMod;
+  try { serverMod = require(path.join(APP_DIR, 'lib', 'server.js')); }
+  catch (e) { logLine('app files unusable, using bundled copy: ' + e.message); APP_DIR = BUNDLED_DIR; serverMod = require(path.join(APP_DIR, 'lib', 'server.js')); }
+  const { createServer, listSaves } = serverMod;
   const srv = createServer({
     appDir: APP_DIR, getSavesDir: savesDir, setSavesDir: d => { const c = readConfig(); c.dir = d; writeConfig(c); }, getGameDir: gameDir, listSaves,
     getExtraMapDirs: () => { const c = readConfig(); return c.mapDirs || []; }, onPick: pickFolder, onFind: findSaveFolders,

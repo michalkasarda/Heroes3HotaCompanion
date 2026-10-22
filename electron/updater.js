@@ -39,7 +39,7 @@ async function checkAndUpdate(contentDir, onProgress) {
   for (const p of changed) { const dst = path.join(contentDir, p); fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.renameSync(path.join(tmp, p), dst); }
   for (const p of removed) fs.rmSync(path.join(contentDir, p), { force: true });
   fs.rmSync(tmp, { recursive: true, force: true });
-  fs.writeFileSync(path.join(contentDir, 'manifest.json'), JSON.stringify({ commit, date: head.commit.committer.date, files: remote }));
+  fs.writeFileSync(path.join(contentDir, 'manifest.json'), JSON.stringify({ commit, date: head.commit.committer.date, version: manifest.version, files: remote }));
   return { updated: changed.length + removed.length > 0, changed, removed, commit };
 }
 
