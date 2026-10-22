@@ -1,4 +1,6 @@
 const { app, BrowserWindow, dialog, Menu, shell } = require('electron');
+// AppImage on Ubuntu 24.04+: AppArmor blocks the SUID/userns sandbox, so run unsandboxed on Linux
+if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
