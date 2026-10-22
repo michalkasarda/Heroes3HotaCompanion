@@ -3,6 +3,7 @@
 const { parseDef, frameRGBA } = require('./h3lod');
 const fs = require('fs'), path = require('path');
 // original HotA def names -> names used by the VCMI mod files bundled under hota/defs
+const EXTRA_ALIAS = { 'avxamsn2.def': 'avxamsn2_1.def', 'avcbule0.def': 'avcbulc0.def' };
 const ALIAS = (() => { const out = {}; try { const t = JSON.parse(fs.readFileSync(path.join(__dirname, 'hota_mapping18.json'))).templates || {}; for (const [modPath, orig] of Object.entries(t)) out[orig.toLowerCase()] = modPath.split('/').pop().toLowerCase(); } catch (e) {} return out; })();
 const PAGE = 2048;
 class Atlas {
@@ -12,7 +13,10 @@ class Atlas {
     let added = 0;
     for (const name of names) {
       const k = name.toLowerCase(); if (this.entries[k] !== undefined) continue;
-      let d = this.gd.getDef(k); if (!d && ALIAS[k]) d = this.gd.getDef(ALIAS[k]); if (!d) { this.entries[k] = null; continue; }
+      let d = this.gd.getDef(k); if (!d && ALIAS[k]) d = this.gd.getDef(ALIAS[k]); if (!d && EXTRA_ALIAS[k]) d = this.gd.getDef(EXTRA_ALIAS[k]);
+      // newer HotA variants missing from the bundled set: fall back to the previous numbered sibling (avmcrsn2 -> avmcrsn1)
+      if (!d) { const m = /^(.*?)(\d)\.def$/.exec(k); if (m) for (let v = +m[2] - 1; v >= 0 && !d; v--) d = this.gd.getDef(m[1] + v + '.def'); }
+      if (!d) { this.entries[k] = null; continue; }
       let fr; try { const def = parseDef(d); if (!def.frames.length) { this.entries[k] = null; continue; } fr = frameRGBA(def, d, def.frames[0]); } catch (e) { this.entries[k] = null; continue; }
       if (fr.w > PAGE || fr.h > PAGE) { this.entries[k] = null; continue; }
       if (!this.cur) this.newPage();
