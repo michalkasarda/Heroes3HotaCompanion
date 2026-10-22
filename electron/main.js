@@ -26,14 +26,17 @@ function seedContent() {
   }
   return dir;
 }
+let updState = { status: 'not checked', error: null, checkedAt: null };
 function toast(msg) { if (win) win.webContents.executeJavaScript(`typeof __toast === 'function' && __toast(${JSON.stringify(msg)})`).catch(() => {}); }
 async function updateContent(manual) {
-  const cfg = readConfig(); if (!manual && cfg.autoUpdate === false) return;
+  const cfg = readConfig(); if (!manual && cfg.autoUpdate === false) { updState = { status: 'automatic updates off', error: null, checkedAt: Date.now() }; return; }
+  updState = { status: 'checking', error: null, checkedAt: Date.now() };
   try {
-    const r = await checkAndUpdate(APP_DIR, (n, t, p) => { if (n === 1 || n % 10 === 0 || n === t) toast(`Updating map data ${n}/${t}...`); });
+    const r = await checkAndUpdate(APP_DIR, (n, t, p) => { updState.status = `downloading ${n}/${t}`; if (n === 1 || n % 10 === 0 || n === t) toast(`Updating map data ${n}/${t}...`); });
+    updState = { status: r.updated ? `updated ${r.changed.length} file(s)` : 'up to date', error: null, checkedAt: Date.now() };
     if (r.updated) { toast('Map data updated, reloading...'); setTimeout(() => win && win.webContents.reload(), 1200); }
     else if (manual) toast('Map data is up to date.');
-  } catch (e) { if (manual) toast('Update check failed: ' + e.message); }
+  } catch (e) { updState = { status: 'check failed', error: e.message, checkedAt: Date.now() }; if (manual) toast('Update check failed: ' + e.message); }
 }
 function readConfig() { try { return JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch (e) { return {}; } }
 function writeConfig(c) { fs.mkdirSync(path.dirname(CONFIG), { recursive: true }); fs.writeFileSync(CONFIG, JSON.stringify(c, null, 2)); }
@@ -114,7 +117,7 @@ function startServer() {
     const srv = http.createServer(async (req, res) => {
       const url = decodeURIComponent(req.url.split('?')[0]);
       const json = (code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': b.length }); res.end(b); };
-      if (url === '/api/info') return json(200, { electron: true, pick: true, dir: savesDir() });
+      if (url === '/api/info') { const mf = readManifest(APP_DIR) || {}; return json(200, { electron: true, pick: true, dir: savesDir(), version: app.getVersion(), content: { commit: mf.commit, date: mf.date }, update: updState }); }
       if (url === '/api/pick') { const d = await pickFolder(); return json(200, { dir: d || savesDir() }); }
       if (url === '/api/find') return json(200, { folders: findSaveFolders() });
       if (url.startsWith('/api/use/')) { const d = url.slice('/api/use/'.length); if (!fs.existsSync(d)) return json(404, { error: 'missing' }); const cfg = readConfig(); cfg.dir = d; writeConfig(cfg); return json(200, { dir: d }); }

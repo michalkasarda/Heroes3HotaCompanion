@@ -319,6 +319,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       
       <div id="srv-ui" hidden>
         <div class="row"><span id="srv-path" class="hint2 tiny" style="word-break:break-all"></span></div>
+        <div class="row"><span id="srv-ver" class="hint2 tiny"></span></div>
         <div class="btns"><button class="btn" id="srv-refresh">Refresh list</button><button class="btn" id="srv-latest">Load newest</button><button class="btn" id="srv-pick" hidden>Choose folder...</button><button class="btn" id="srv-find" hidden>Find saves on this PC</button></div>
         <ul class="savelist" id="srv-list"></ul>
       </div>
@@ -1250,6 +1251,8 @@ async function srvLoad(name) {
   const r = await fetch('/api/save/' + encodeURIComponent(name)); const b = await r.arrayBuffer(); loadSave(b, name);
 }
 document.getElementById('srv-refresh').addEventListener('click', () => srvRefresh().catch(() => {}));
+function showVersion() { fetch('/api/info').then(r => r.json()).then(j => { if (!j.version) return; const c = j.content || {}, u = j.update || {}; document.getElementById('srv-ver').textContent = `App v${j.version} \u00b7 map data ${c.commit ? c.commit.slice(0, 7) + ' from ' + new Date(c.date).toLocaleString() : 'bundled'} \u00b7 update: ${u.status}${u.error ? ' (' + u.error + ')' : ''}`; }).catch(() => {}); }
+showVersion(); setInterval(showVersion, 5000);
 fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = document.getElementById('srv-pick'); b.hidden = false; b.addEventListener('click', () => fetch('/api/pick').then(() => srvRefresh()).catch(() => {}));
     const f = document.getElementById('srv-find'); f.hidden = false; f.addEventListener('click', async e => {
       document.getElementById('save-status').textContent = 'Scanning for save folders (up to 20 s)...';
