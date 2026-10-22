@@ -21,17 +21,23 @@ function seedContent() {
   const mf = readManifest(dir);
   if (!mf || mf.version !== app.getVersion()) {
     logLine('seeding app files from the bundled copy (installed ' + app.getVersion() + ', content ' + (mf ? mf.version : 'none') + ')');
-    fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    // build the copy next to the target, then swap, so a half-written folder is never used; retries cover files briefly locked by a scanner
+    const tmp = dir + '.seeding', rm = { recursive: true, force: true, maxRetries: 10, retryDelay: 300 };
+    fs.rmSync(tmp, rm); fs.mkdirSync(tmp, { recursive: true });
     const files = {};
-    const walk = (src, rel) => { for (const e of fs.readdirSync(src, { withFileTypes: true })) { const r = rel ? rel + '/' + e.name : e.name; if (e.isDirectory()) { fs.mkdirSync(path.join(dir, r), { recursive: true }); walk(path.join(src, e.name), r); } else { const b = fs.readFileSync(path.join(src, e.name)); fs.writeFileSync(path.join(dir, r), b); files[r] = blobSha(b); } } };
+    const walk = (src, rel) => { for (const e of fs.readdirSync(src, { withFileTypes: true })) { const r = rel ? rel + '/' + e.name : e.name; if (e.isDirectory()) { fs.mkdirSync(path.join(tmp, r), { recursive: true }); walk(path.join(src, e.name), r); } else { const b = fs.readFileSync(path.join(src, e.name)); fs.writeFileSync(path.join(tmp, r), b); files[r] = blobSha(b); } } };
     walk(BUNDLED_DIR, '');
-    fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ commit: null, version: app.getVersion(), files }));
+    fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({ commit: null, version: app.getVersion(), files }));
+    fs.rmSync(dir, rm); fs.renameSync(tmp, dir);
+    logLine('seeded ' + Object.keys(files).length + ' files');
   }
   return dir;
 }
+let seedError = null;
 let win = null, updState = { status: 'not checked', error: null };
 function toast(msg) { if (win) win.webContents.executeJavaScript(`typeof __toast === 'function' && __toast(${JSON.stringify(msg)})`).catch(() => {}); }
 async function updateContent(manual) {
+  if (APP_DIR === BUNDLED_DIR) { updState = { status: 'running the bundled files because the app files folder could not be set up', error: seedError }; if (manual) toast('App files folder unusable: ' + seedError); return; }
   const cfg = readConfig(); if (!manual && cfg.autoUpdate === false) { updState = { status: 'automatic updates off', error: null }; return; }
   updState = { status: 'checking', error: null }; logLine('content check start, manifest=' + JSON.stringify((readManifest(APP_DIR) || {}).commit));
   try {
@@ -71,10 +77,10 @@ async function pickFolder(kind) {
 function fatal(e) { logLine('FATAL ' + (e && e.stack || e)); dialog.showErrorBox('Heroes 3 HotA Companion could not start', String(e && e.stack || e) + '\n\nLog: ' + path.join(app.getPath('userData'), 'update.log')); app.exit(1); }
 process.on('uncaughtException', fatal); process.on('unhandledRejection', fatal);
 app.whenReady().then(async () => {
-  try { APP_DIR = seedContent(); } catch (e) { logLine('seeding failed, using bundled files: ' + e.message); APP_DIR = BUNDLED_DIR; }
+  try { APP_DIR = seedContent(); } catch (e) { seedError = e.message; logLine('seeding failed, using bundled files: ' + (e.stack || e.message)); APP_DIR = BUNDLED_DIR; }
   let serverMod;
   try { serverMod = require(path.join(APP_DIR, 'lib', 'server.js')); }
-  catch (e) { logLine('app files unusable, using bundled copy: ' + e.message); APP_DIR = BUNDLED_DIR; serverMod = require(path.join(APP_DIR, 'lib', 'server.js')); }
+  catch (e) { seedError = e.message; logLine('app files unusable, using bundled copy: ' + (e.stack || e.message)); APP_DIR = BUNDLED_DIR; serverMod = require(path.join(APP_DIR, 'lib', 'server.js')); }
   const { createServer, listSaves } = serverMod;
   const srv = createServer({
     appDir: APP_DIR, getSavesDir: savesDir, setSavesDir: d => { const c = readConfig(); c.dir = d; writeConfig(c); }, getGameDir: gameDir, listSaves,
