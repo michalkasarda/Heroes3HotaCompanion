@@ -6,9 +6,9 @@ the cheapest route between two points with real movement costs, and reads your s
 show the world as your player currently sees it: fog of war, taken items, dead stacks, owners,
 heroes, Seer's Huts done, combination artifacts you can assemble.
 
-Maps are added through a generator pipeline that reads the `.h3m` file and the game's data
-files. The first bundled map is **The Mysterious Island** (v1-5-j, 252x252, two levels); see
-[Adding a map](#adding-a-map) for others.
+Any HotA 1.8 map works: pick a `.h3m` from your Heroes 3 install on the start screen and the
+app parses it on the spot and draws it with the sprites from your own game files. Nothing is
+pre-rendered or bundled per map.
 
 Everything runs on your machine. No account, no upload, no internet needed.
 
@@ -28,16 +28,22 @@ Grab the latest build from the
 The executable is not signed, so Windows SmartScreen warns on first start; choose
 "More info" and "Run anyway".
 
-## Saves folder
+## Start screen
 
-The app needs the Heroes 3 `Games` folder, the one that holds your `.GM1` files. On start it
-looks in the usual places:
+The start screen lists the maps in your Heroes 3 `Maps` folder on the left and your saves on
+the right. Pick a map and optionally a save, press **Open**, and the map is parsed and drawn
+(a few seconds for a 252x252 map). Once inside, **Change map...** in the Save panel returns
+to the start screen; the big **Map** / **Game** buttons switch views at any time.
+
+The app needs two folders from your Heroes 3 HotA install: the game folder (with `Data` and
+`Maps`, for the map files and graphics) and the `Games` folder that holds your `.GM1` files.
+On start it looks in the usual places:
 
 - Windows: `C:\Games\Heroes 3 HotA\Games`, the GOG and Steam HD install folders, `C:\Heroes3\Games`
 - Linux: Bottles and Wine prefixes, VCMI saves
 
-If none matches, the Save panel shows **Choose folder...** (also under **File > Choose saves
-folder...**). Pick the `Games` folder; subfolders such as `- The Mysterious Island -` are scanned
+If none matches, use **Game folder...** and **Saves folder...** on the start screen (also under
+the **File** menu). Subfolders of `Games` such as `- The Mysterious Island -` are scanned
 too. The choice is remembered. Click **Refresh list** after saving in the game, or
 **Load newest** to jump to the latest autosave.
 
@@ -123,19 +129,12 @@ quit.
 - Hero sprites all use the knight model. A handful of HotA 1.8 decorations have no sprite.
 - Saves must come from HotA 1.8 (map format 10); other versions lay the save out differently.
 
-## Adding a map
+## Maps
 
-Each map is generated into its own `app/` bundle: terrain tiles, sprite atlas, object lists,
-quests, routing grid and the anchors the save reader needs. The pipeline lives in `src/` and
-needs a HotA install for the game data files (path in `src/lod.py`) plus the map's `.h3m`:
-
-1. `tiles.py <map.h3m> app --data` and `build_assets.py <map.h3m> app` (terrain, atlas, placements)
-2. `rewards.py <map.h3m> app/data.json`, `nav.py app/data.json`, `oinfo.py app/oinfo.json`
-3. build the page: `page_template.html` with `__DATA__` replaced by `app/data.json`
-
-Then `npm run dist` in `electron/`. A map picker inside the app, so one build can carry several
-maps, is the next planned step. Classic SoD maps need small parser changes; HotA versions other
-than 1.8 may differ in the save layout.
+Maps are read straight from the `.h3m` file (HotA 1.8 format), and sprites, terrain and
+artifact icons come from the game's own `.lod` archives plus the HotA 1.8 graphics shipped in
+`app/hota/`. Classic RoE/SoD maps and the few HotA maps that use the event scripting system
+are not supported yet.
 
 ## Building from source
 
@@ -149,7 +148,9 @@ Requires Node 20; building the Windows installer on Linux needs wine. Pushing a 
 runs the GitHub Actions workflow, which builds on Windows and Linux and attaches the
 installers to the release.
 
-Layout: `app/` is the generated web app (page, terrain tiles, sprite atlas, data),
-`src/` the Python generator pipeline (needs a HotA install for the game data files, path in
-`src/lod.py`), `electron/` the desktop wrapper, `serve.py` a tiny local server to run the
-web app without Electron.
+Layout: `app/` is the web app: `page.html` (viewer), `start.html` (map and save picker),
+`lib/` (Node: `.h3m` parser, LOD/DEF reader, sprite atlas, route grid and quest data builder,
+HTTP server) and `hota/` (HotA 1.8 sprites, from the VCMI HotA mod). `electron/` is the
+desktop wrapper. `src/` is the original Python pipeline the Node libraries were ported from,
+kept for reference. To run without Electron:
+`node app/lib/standalone.js [saves folder] [game folder]` and open http://localhost:8765.

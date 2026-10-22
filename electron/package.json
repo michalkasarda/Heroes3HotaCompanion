@@ -1,8 +1,8 @@
 {
   "name": "heroes3-hota-companion",
   "productName": "Heroes 3 HotA Companion",
-  "version": "0.0.9",
-  "description": "Interactive map companion for Heroes of Might and Magic III: Horn of the Abyss. Map viewer, route finder, savegame import. Bundled map: The Mysterious Island.",
+  "version": "0.1.0",
+  "description": "Interactive map companion for Heroes of Might and Magic III: Horn of the Abyss. Parses any HotA map from your install: map viewer, route finder, savegame import.",
   "main": "main.js",
   "license": "MIT",
   "scripts": {

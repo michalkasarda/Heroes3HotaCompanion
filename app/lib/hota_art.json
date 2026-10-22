@@ -1,0 +1,90 @@
+{
+"sleepkeeper": {
+"name": "Sleepkeeper",
+"desc": "{Sleepkeeper} While equipped, the artifact provides the hero's creatures with immunity to Mind spells."
+},
+"runesofimminency": {
+"name": "Runes of Imminency",
+"desc": "{Runes of Imminency} Decrease enemy's Luck by 1."
+},
+"royalarmorofnix": {
+"name": "Royal Armor of Nix",
+"desc": "{Royal Armor of Nix} Worn on the torso, this item increases your Power skill by +6."
+},
+"demonshorseshoe": {
+"name": "Demon's Horseshoe",
+"desc": "{Demon's Horseshoe} Decreases enemy's Luck by 1."
+},
+"wayfarerboots": {
+"name": "Wayfarer's Boots",
+"desc": "{Wayfarer's Boots} Worn on the feet, these boots allow your hero to move over rough terrain without penalty."
+},
+"hornoftheabyss": {
+"name": "Horn of the Abyss",
+"desc": "{Horn of the Abyss} Using the spell of Horn of the Abyss, you can rise Fangarms from any corpses from both side, except non-living creatures."
+},
+"crownofthefiveseas": {
+"name": "Crown of the Five Seas",
+"desc": "{Crown of the Five Seas} Worn on the head, this item increases your Knowledge skill by 6."
+},
+"ringofsuppression": {
+"name": "Ring of Suppression",
+"desc": "{Ring of Suppression} Worn on the finger, this ring decreases enemy's Morale by 1."
+},
+"shamanspuppet": {
+"name": "Shaman's Puppet",
+"desc": "{Shaman's Puppet} Decreases enemy's Luck by 2."
+},
+"hideousmask": {
+"name": "Hideous Mask",
+"desc": "{Hideous Mask} Decreases enemy's Morale by 1."
+},
+"plateofdyinglight": {
+"name": "Plate of Dying Light",
+"desc": "{Plate of Dying Light} Worn on a torso, this item reduces the Power skill of enemy hero by 25% during combat."
+},
+"ringofoblivion": {
+"name": "Ring of Oblivion",
+"desc": "{Ring of Oblivion} When worn, makes all losses in the battle irrevocable."
+},
+"goldengoose": {
+"name": "Golden Goose",
+"desc": "{Golden Goose} When equipped, the Golden Goose increases your income by a total of 7000 gold per day."
+},
+"tridentofdominion": {
+"name": "Trident of Dominion",
+"desc": "{Trident of Dominion} This right-handed weapon increases your Attack skill by 7."
+},
+"shieldofnavalglory": {
+"name": "Shield of Naval Glory",
+"desc": "{Shield of Naval Glory} This left-handed item increases your Defense skill by 7."
+},
+"pendantofreflection": {
+"name": "Pendant of Reflection",
+"desc": "{Pendant of Reflection} Increases your Magic Resistance additionally by 20%."
+},
+"capeofsilence": {
+"name": "Cape of Silence",
+"desc": "{Cape of Silence} While wearing this cape, neither you nor your opponent will be able to cast level 1-2 spells during combat."
+},
+"pendantofdownfall": {
+"name": "Pendant of Downfall",
+"desc": "{Pendant of Downfall} Worn about the neck, this item decreases enemy's Morale by 2."
+},
+"sealofsunset": {
+"name": "Seal of Sunset",
+"desc": "{Seal of Sunset} Worn on a finger, this item reduces the Power skill of enemy hero by 10% during combat."
+},
+"charmofeclipse": {
+"name": "Charm of Eclipse",
+"desc": "{Charm Of Eclipse} This item reduces the Power skill of enemy hero by 10% during combat."
+},
+"diplomatscloak": {
+"name": "Diplomat's Cloak",
+"desc": "{Diplomat's Cloak} Allows your hero to retreat or surrender when battling neutral monsters or defending a town. Multiplies your hero army strength by 3 (for neutral armies and Thieves guild). **NOT IMPLEMENTED in VCMI yet**"
+},
+"ironfistoftheogre": {
+"name": "Ironfist Of The Ogre",
+"desc": "{Ironfist Of The Ogre} At the beginning of every combat casts Haste, Bloodlust, Fire Shield and Counterstrike spells on expert level on all of your creatures for fifty rounds."
+}
+}

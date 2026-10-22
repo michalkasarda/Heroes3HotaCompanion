@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HotA Companion</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#17120e;--panel:#241c15;--panel2:#2e251b;--line:#4a3c2a;--text:#ecdfc6;--muted:#a08f74;--gold:#e8b94c;--gold-dim:#8a6a26;--red:#e4584c;color-scheme:dark}
+html,body{height:100%}body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:14px}
+.wrap{max-width:1100px;margin:0 auto;padding:32px 16px;display:flex;flex-direction:column;gap:18px}
+h1{font-family:Cinzel,Georgia,serif;font-size:28px;color:var(--gold);margin:0;letter-spacing:.04em}.sub{color:var(--muted);margin:0}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:800px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-height:360px;max-height:70vh}
+.card h2{margin:0;padding:12px 16px;font-family:Cinzel,Georgia,serif;font-size:14px;letter-spacing:.06em;color:var(--gold);text-transform:uppercase;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.card .path{color:var(--muted);font-size:10.5px;padding:6px 16px;word-break:break-all;border-bottom:1px solid var(--line)}
+ul{list-style:none;margin:0;padding:6px;overflow-y:auto;flex:1}li{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-variant-numeric:tabular-nums}
+li:hover{background:var(--panel2)}li.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--gold)}li .m{color:var(--muted);font-size:11.5px;white-space:nowrap}li.back{color:var(--gold)}
+.btn{padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}.btn.primary{background:var(--gold);color:#1a1409;border-color:var(--gold);font-weight:600;font-size:14px;padding:10px 22px}.btn:disabled{opacity:.4;cursor:not-allowed}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.status{color:var(--muted);font-size:12.5px;min-height:18px}
+.prog{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;display:none}.prog i{display:block;height:100%;width:30%;background:var(--gold);animation:sl 1.2s infinite linear}@keyframes sl{from{transform:translateX(-100%)}to{transform:translateX(350%)}}
+.empty{color:var(--muted);padding:14px 10px;font-size:12.5px;line-height:1.5}
+</style></head><body>
+<div class="wrap">
+  <div><h1>Heroes 3 HotA Companion</h1><p class="sub">Pick a map, then a save (optional). The map is parsed from its .h3m file and drawn with the game's own graphics; the save adds fog of war, current state and your heroes.</p></div>
+  <div class="cols">
+    <div class="card"><h2>Map <button class="btn" id="b-game">Game folder...</button></h2><div class="path" id="mapdir"></div><ul id="maps"></ul></div>
+    <div class="card"><h2>Save <span><button class="btn" id="b-find">Find saves</button> <button class="btn" id="b-saves">Saves folder...</button></span></h2><div class="path" id="savedir"></div><ul id="saves"></ul></div>
+  </div>
+  <div class="bar"><button class="btn primary" id="b-open" disabled>Open</button><button class="btn" id="b-maponly" disabled>Open map only</button><span class="status" id="status"></span></div>
+  <div class="prog" id="prog"><i></i></div>
+</div>
+<script>
+let maps = [], saves = [], selMap = null, selSave = null, folder = null;
+const $ = id => document.getElementById(id);
+const fmt = t => new Date(t).toLocaleString();
+async function loadMaps() {
+  const j = await fetch('/api/maps').then(r => r.json()); maps = j.maps; $('mapdir').textContent = j.gameDir ? j.gameDir + ' (Maps)' : 'Heroes 3 game folder not found. Use "Game folder..." and point at the HotA install (the folder with h3hota.exe).';
+  const ul = $('maps'); ul.innerHTML = ''; if (!maps.length) ul.innerHTML = '<li class="empty">No .h3m maps found.</li>';
+  try { const last = localStorage.getItem('hc-map'); if (last && maps.some(m => m.file === last)) selMap = last; } catch (e) {}
+  for (const m of maps) { const li = document.createElement('li'); li.innerHTML = `<span>${m.name}</span><span class="m">${(m.size / 1024).toFixed(0)} KB</span>`; if (m.file === selMap) li.classList.add('sel'); li.addEventListener('click', () => { selMap = m.file; for (const l of ul.children) l.classList.toggle('sel', l === li); update(); }); ul.appendChild(li); }
+  update();
+}
+async function loadSaves() {
+  const j = await fetch('/api/saves').then(r => r.json()); saves = j.saves; $('savedir').textContent = j.dir || 'No saves folder yet. Use "Find saves" or "Saves folder...".'; renderSaves();
+}
+function renderSaves() {
+  const ul = $('saves'); ul.innerHTML = '';
+  const groups = new Map(); for (const s of saves) { const i = s.name.lastIndexOf('/'); const f = i < 0 ? '' : s.name.slice(0, i); if (!groups.has(f)) groups.set(f, []); groups.get(f).push(s); }
+  if (folder !== null && !groups.has(folder)) folder = null;
+  if (folder === null) {
+    if (!groups.size) ul.innerHTML = '<li class="empty">No saves found.</li>';
+    for (const [f, list] of [...groups.entries()].sort((a, b) => Math.max(...b[1].map(s => s.mtime)) - Math.max(...a[1].map(s => s.mtime)))) { const li = document.createElement('li'); li.innerHTML = `<span>\u{1F4C1} ${f || 'Games (loose saves)'}</span><span class="m">${list.length} saves</span>`; li.addEventListener('click', () => { folder = f; renderSaves(); }); ul.appendChild(li); }
+    return;
+  }
+  const back = document.createElement('li'); back.className = 'back'; back.innerHTML = `<span>\u2190 ${folder || 'Games (loose saves)'}</span><span class="m">all maps</span>`; back.addEventListener('click', () => { folder = null; selSave = null; renderSaves(); update(); }); ul.appendChild(back);
+  for (const s of groups.get(folder)) { const li = document.createElement('li'); li.innerHTML = `<span>${s.name.slice(s.name.lastIndexOf('/') + 1)}</span><span class="m">${fmt(s.mtime * 1000)}</span>`; if (s.name === selSave) li.classList.add('sel'); li.addEventListener('click', () => { selSave = s.name; for (const l of ul.children) l.classList.toggle('sel', l === li); update(); }); ul.appendChild(li); }
+}
+function update() { $('b-open').disabled = !selMap || !selSave; $('b-maponly').disabled = !selMap; $('b-open').textContent = selSave ? 'Open map + save' : 'Open'; }
+async function open(withSave) {
+  $('status').textContent = 'Parsing map and building sprites...'; $('prog').style.display = 'block'; $('b-open').disabled = $('b-maponly').disabled = true;
+  const r = await fetch('/api/map/open?file=' + encodeURIComponent(selMap)).then(r => r.json()).catch(e => ({ error: e.message }));
+  if (r.error) { $('status').textContent = 'Could not open map: ' + r.error; $('prog').style.display = 'none'; update(); return; }
+  try { localStorage.setItem('hc-map', selMap); } catch (e) {}
+  location.href = '/' + (withSave && selSave ? '?save=' + encodeURIComponent(selSave) : '');
+}
+$('b-open').addEventListener('click', () => open(true)); $('b-maponly').addEventListener('click', () => open(false));
+$('b-game').addEventListener('click', () => fetch('/api/pickgame').then(loadMaps));
+$('b-saves').addEventListener('click', () => fetch('/api/pick').then(loadSaves));
+$('b-find').addEventListener('click', async () => { $('status').textContent = 'Scanning for save folders...'; const r = await fetch('/api/find').then(r => r.json()); if (!r.folders.length) { $('status').textContent = 'No .GM1 files found in the usual places.'; return; } const d = r.folders[0].dir; await fetch('/api/use/' + encodeURIComponent(d)); $('status').textContent = 'Using ' + d + (r.folders.length > 1 ? ' (' + (r.folders.length - 1) + ' more folders found, change with "Saves folder...")' : ''); loadSaves(); });
+loadMaps().catch(e => { $('mapdir').textContent = 'Cannot reach the app server: ' + e.message; }); loadSaves().catch(() => {});
+</script></body></html>
