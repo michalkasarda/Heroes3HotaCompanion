@@ -342,7 +342,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
   </div>
 <div class="half" id="pane-prog"><h2>Progress</h2>
     <div class="controls">
-      <p class="hint2 tiny" style="margin:0">Per player colour. Keys are manual; guards removed in the save count as passed. Click a guard on the map to toggle.</p>
+      <p class="hint2 tiny" style="margin:0">Per player colour. In Game mode keys and passed guards come from the save; tick the rest yourself. Click a guard on the map to toggle.</p>
       <div class="row"><label><input type="checkbox" id="o-keys" checked> Routing uses my keys</label><label><input type="checkbox" id="o-quests" checked> Routing uses quest progress</label><label><input type="checkbox" id="f-gd" checked> Show guards</label></div>
       <div class="keys" id="keys"></div>
       <div class="search"><input id="qq" type="search" placeholder="Filter quest guards (condition, coords)" autocomplete="off" aria-label="Filter quest guards"></div>
@@ -678,7 +678,7 @@ function showTip(h, cx, cy) {
     if (a && a.r === 2 && a.k === "Seer's Hut") { const mk = seerMask(a.oi); if (mk) extra += ` Completed by ${PLAYER.filter((_, p) => mk >> p & 1).join(', ')}.`; }
     const own = ownByOi && ownByOi.get(o.oi); let ownerLine = '';
     if (own) { const ow = h.live && SAVE.owner.has(o.oi) ? SAVE.owner.get(o.oi) : own.o; ownerLine = `<div class="to">${sw(ow)}</div>`; }
-    if (o.cls === 54 && h.live) extra += ' (count as placed in the map editor)';
+    if (h.live && SAVE.count && SAVE.count.has(o.oi)) extra += ` Now ${SAVE.count.get(o.oi)} in the stack.`; else if (o.cls === 54 && h.live) extra += ' (count as placed in the map editor)';
     const desc = inf && inf.d ? inf.d : '';
     html = `<div class="tn">${name}</div>${type ? `<div class="tt">${type}</div>` : ''}${extra ? `<div class="tx">${extra}</div>` : ''}${desc ? `<div class="tx td">${desc}</div>` : ''}${ownerLine}<div class="tt">(${o.x}, ${o.y})</div>`;
   }
@@ -766,7 +766,9 @@ function qstate(p) {  // auto state of a quest guard for the chosen player: 'don
   if (p.q.startsWith('be hero ') && SAVE && gameOn()) { const nm = p.q.slice(8); return SAVE.heroes.some(h => h.name === nm && h.owner === curPlayer) ? 'done' : null; }
   return null;
 }
-const isLocked = p => { if (gone(p.oi)) return false; if (p.k === 'borderGuard' || p.k === 'borderGate') return !prog.keys[p.c]; const a = qstate(p); if (a === 'done') return false; if (a === 'impossible') return true; return !prog.done[spKey(p)]; };
+const keyFromSave = c => !!SAVE && gameOn() && !!SAVE.keys && ((SAVE.keys[COLORS.indexOf(c)] >> curPlayer) & 1) === 1;
+const hasKey = c => !!prog.keys[c] || keyFromSave(c);
+const isLocked = p => { if (gone(p.oi)) return false; if (p.k === 'borderGuard' || p.k === 'borderGate') return !hasKey(p.c); const a = qstate(p); if (a === 'done') return false; if (a === 'impossible') return true; return !prog.done[spKey(p)]; };
 const gmk = new Map();
 for (const p of GUARDS) {
   const el = document.createElement('div'); el.className = 'mk gd ' + (p.c && PCOL[p.c] ? 'b' : 'q') + (p.x > N - 10 ? ' flip' : '');
@@ -783,7 +785,7 @@ for (const c of COLORS) {
   lab.querySelector('input').addEventListener('change', e => { prog.keys[c] = e.target.checked; saveProg(); paintGuards(); if (start && goal) findRoute(); });
   keysEl.appendChild(lab);
 }
-function syncKeys() { for (const inp of keysEl.querySelectorAll('input')) inp.checked = !!prog.keys[inp.dataset.c]; }
+function syncKeys() { for (const inp of keysEl.querySelectorAll('input')) { const fs = keyFromSave(inp.dataset.c); inp.checked = fs || !!prog.keys[inp.dataset.c]; inp.disabled = fs; inp.parentElement.title = fs ? 'Held according to the save' : ''; } }
 const qlist = document.getElementById('qlist'), qq = document.getElementById('qq'), qhide = document.getElementById('q-hide');
 const QUESTS = GUARDS.filter(p => p.k === 'questGuard' || p.k === 'questGate').sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
 function refreshQuests() {
@@ -816,7 +818,7 @@ function route(s, g, opt) {
   const dist = new Float64Array(2 * NN).fill(Infinity), prev = new Int32Array(2 * NN).fill(-1), via = new Int8Array(2 * NN);
   const h = new Heap(); dist[s] = 0; h.push(0, s);
   const enter = (t, isGoal) => { const c = code(t); if (c === 1 || c === 4) return false; if (c === 2) return opt.boat;
-    const si = spAt[t]; if (si >= 0) { const p = NAV.sp[si]; if (!gone(p.oi)) { if (opt.keys && (p.k === 'borderGuard' || p.k === 'borderGate') && !prog.keys[p.c]) return isGoal; if (opt.quests && (p.k === 'questGuard' || p.k === 'questGate') && isLocked(p)) return isGoal; } }
+    const si = spAt[t]; if (si >= 0) { const p = NAV.sp[si]; if (!gone(p.oi)) { if (opt.keys && (p.k === 'borderGuard' || p.k === 'borderGate') && !hasKey(p.c)) return isGoal; if (opt.quests && (p.k === 'questGuard' || p.k === 'questGate') && isLocked(p)) return isGoal; } }
     return true; };
   const pen = t => { let p = 0; if (opt.mon && ((guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)) || (code(t) === 6 && guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)))) p += 4000; const si = spAt[t]; if (opt.gate && si >= 0 && /Guard|Gate|garrison/.test(NAV.sp[si].k)) p += 6000; return p; };
   while (h.size) {
@@ -881,9 +883,9 @@ function findRoute() {
     const sj = spAt[t];
     if (sj >= 0 && !seenSp.has(sj) && !r.via[t] && !gone(NAV.sp[sj].oi)) { seenSp.add(sj); const sp = NAV.sp[sj];
       if (sp.k === 'garrison') { const so = SAVE && gameOn() && revealedOi(sp.oi) ? SAVE.owner.get(sp.oi) : undefined; notes.push({k: 'gate', t: `Garrison at (${p.x}, ${p.y}): ${so !== undefined ? (so < 8 ? PLAYER[so] : 'neutral') + ' (from save)' : sp.o}, ${sp.a}`}); }
-      else if (sp.k === 'borderGuard' || sp.k === 'borderGate') { const kt = keyTent[sp.c]; notes.push({k: 'gate', t: `${KIND[sp.k]} ${sp.c} at (${p.x}, ${p.y})` + (prog.keys[sp.c] ? ' (you hold the key)' : `, key from Keymaster's Tent ${kt ? `at (${kt.x}, ${kt.y}) ${kt.z ? 'UG' : 'S'}` : '(none on map)'}`)}); }
+      else if (sp.k === 'borderGuard' || sp.k === 'borderGate') { const kt = keyTent[sp.c]; notes.push({k: 'gate', t: `${KIND[sp.k]} ${sp.c} at (${p.x}, ${p.y})` + (hasKey(sp.c) ? ' (you hold the key)' : `, key from Keymaster's Tent ${kt ? `at (${kt.x}, ${kt.y}) ${kt.z ? 'UG' : 'S'}` : '(none on map)'}`)}); }
       else if (sp.k === 'questGuard' || sp.k === 'questGate') notes.push({k: 'gate', t: `${KIND[sp.k]} at (${p.x}, ${p.y}): ${sp.q}` + (!isLocked(sp) ? ' (done)' : '')}); }
-    const gm = guard[t]; if (gm >= 0 && !gone(NAV.mon[gm].oi) && !seenMon.has(gm) && t !== si) { seenMon.add(gm); const mo = NAV.mon[gm]; notes.push({k: 'fight', t: `Fight ${mo.n} at (${mo.x}, ${mo.y})`}); }
+    const gm = guard[t]; if (gm >= 0 && !gone(NAV.mon[gm].oi) && !seenMon.has(gm) && t !== si) { seenMon.add(gm); const mo = NAV.mon[gm]; notes.push({k: 'fight', t: `Fight ${mo.n}${SAVE && gameOn() && SAVE.count && SAVE.count.has(mo.oi) ? ' (now ' + SAVE.count.get(mo.oi) + ')' : ''} at (${mo.x}, ${mo.y})`}); }
   });
   const days = r.cost / 1500;
   res.innerHTML = `<span class="big">${Math.round(r.cost)} MP</span><span>${r.path.length - 1} tiles, about ${days.toFixed(1)} days at 1500 MP/day${water ? `, ${water} water tiles, ${crossings} embark/disembark` : ''}${portalsUsed ? `, ${portalsUsed} teleport${portalsUsed > 1 ? 's' : ''}` : ''}. ${seenMon.size} fight${seenMon.size === 1 ? '' : 's'}, ${seenSp.size} gate/guard${seenSp.size === 1 ? '' : 's'}.</span>` + (notes.length ? '<ol>' + notes.map(n => `<li class="${n.k}">${n.t}</li>`).join('') + '</ol>' : '<span>Clear path, nothing in the way.</span>');
@@ -1151,7 +1153,7 @@ function parseSave(buf) {
     const id = raw[t + 10]; if (hinfo[id]) continue;
     let nm = ''; for (let k = 0; k < 13 && raw[t + 169 + k] >= 32 && raw[t + 169 + k] < 127; k++) nm += String.fromCharCode(raw[t + 169 + k]);
     const arts = []; for (let k = 0; k < 83; k++) { const a = u32(t + 382 + 8 * k); if (a !== 0xffffffff && a > 6) arts.push(a); }
-    hinfo[id] = {owner: o, name: nm, arts};
+    hinfo[id] = {owner: o, name: nm, arts, t};
   }
   const heroes = heroTiles.map(h => ({...h, owner: hinfo[h.id] ? hinfo[h.id].owner : 255, name: hinfo[h.id] && hinfo[h.id].name ? hinfo[h.id].name : 'Hero #' + h.id}));
   // fog: u16 per tile, low byte = player mask, high byte in {0,1}
@@ -1179,7 +1181,17 @@ function parseSave(buf) {
     fog = new Uint8Array(NT); for (let i = 0; i < NT; i++) fog[i] = raw[best[1] + 2 * i];
   }
   const heroArts = Object.entries(hinfo).map(([id, h]) => ({id: +id, owner: h.owner, name: h.name, arts: h.arts}));
-  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts};
+  // keys: 8 bytes after the last hero record, one per key colour, bit per player; a constant follows them
+  let keys = null;
+  { let last = -1; for (const h of Object.values(hinfo)) if (h.t > last) last = h.t;
+    const kb = last + 1160 + 513; if (last > 0 && u32(kb + 9) === 0x400cbf01) keys = Array.from(raw.subarray(kb, kb + 8)); }
+  // monster stacks: 33-byte records near the end of the file, one per monster in map order, current count first; bytes 16..19 are always 100
+  let count = null;
+  { let p = -1; for (let s = raw.length - 40; s > raw.length - 400000 && s > 0; s--) if (u32(s) === 100 && u32(s - 33) === 100 && u32(s - 66) === 100) { p = s; break; }
+    const n = NAV.mon.length, first = p - 16 - 33 * (n - 1);
+    if (p > 0 && first > 0) { let ok = 0; for (let i = 0; i < n; i++) if (u32(first + 33 * i + 16) === 100) ok++;
+      if (ok > 0.9 * n) { count = new Map(); for (let i = 0; i < n; i++) count.set(NAV.mon[i].oi, u32(first + 33 * i)); } } }
+  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count};
 }
 const OPOS = Uint8Array.from(atob(DATA.opos), c => c.charCodeAt(0));
 function cp1251(str) { const out = []; for (const ch of str) { const c = ch.charCodeAt(0); out.push(c < 128 ? c : 63); } return out; }
@@ -1220,7 +1232,7 @@ function loadSave(buf, name) {
   for (const m of NAV.mon) if (SAVE.present[m.oi] === 0) removed.mon++;
   for (const p of GUARDS) if (SAVE.present[p.oi] === 0) removed.guard++;
   const ownCount = {}; for (const [oi, o] of SAVE.owner) if (o < 8) ownCount[o] = (ownCount[o] || 0) + 1;
-  st.innerHTML = `<b>${name}</b>: ${SAVE.heroes.length} heroes on map, ${removed.art} artifact spots taken, ${removed.rw} reward objects used, ${removed.mon} stacks gone, ${removed.guard} guards passed, ${SAVE.seer.size} Seer's Huts read, ${SAVE.owner.size} flaggable objects read${SAVE.fog ? '' : ', fog not found'}. Owned objects: ` + PLAYER.map((n, p) => ownCount[p] ? `${n} ${ownCount[p]}` : '').filter(Boolean).join(', ') + '.';
+  st.innerHTML = `<b>${name}</b>: ${SAVE.heroes.length} heroes on map, ${removed.art} artifact spots taken, ${removed.rw} reward objects used, ${removed.mon} stacks gone, ${removed.guard} guards passed, ${SAVE.seer.size} Seer's Huts read, ${SAVE.owner.size} flaggable objects read${SAVE.count ? ', stack sizes read' : ''}${SAVE.keys ? ', keys read' : ''}${SAVE.fog ? '' : ', fog not found'}. Owned objects: ` + PLAYER.map((n, p) => ownCount[p] ? `${n} ${ownCount[p]}` : '').filter(Boolean).join(', ') + '.';
   const sel = document.getElementById('g-player'); sel.innerHTML = '';
   const counts = PLAYER.map((_, p) => { let n = 0; for (const h of SAVE.heroes) if (h.owner === p) n++; return n; });
   let seen = PLAYER.map((_, p) => { let c = 0; if (SAVE.fog) for (let i = 0; i < 2 * NN; i++) c += (SAVE.fog[i] >> p) & 1; return c; });

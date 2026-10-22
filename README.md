@@ -123,9 +123,8 @@ quit.
 
 ## Limits
 
-- Keys are not stored in the savegame in any form I could find, so tick them yourself.
-- Creature stack sizes are the ones placed in the map editor; the save does not expose current
-  numbers.
+- Random monster stacks show the creature class from the map; the save gives their current count
+  but not which creature was rolled.
 - Hero sprites all use the knight model. A handful of HotA 1.8 decorations have no sprite.
 - Saves must come from HotA 1.8 (map format 10); other versions lay the save out differently.
 
