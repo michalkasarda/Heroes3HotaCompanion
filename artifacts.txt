@@ -1,0 +1,292 @@
+== overworld ==
+(230, 11)  Orb of Driving Rain
+(231, 12)  Endless Purse of Gold
+( 74, 15)  Orb of Tempestuous Fire
+( 75, 16)  Endless Sack of Gold
+( 31, 21)  Royal Armor of Nix
+(  6, 28)  Clover of Fortune
+( 32, 30)  Necklace of Ocean Guidance
+(197, 31)  Torso of Legion
+( 68, 32)  Emblem of Cognizance
+( 26, 33)  Trident of Dominion
+( 62, 33)  Crown of the Five Seas
+(204, 34)  Greater Gnoll's Flail
+(205, 34)  Hellstorm Helmet
+(182, 38)  Scales of the Greater Basilisk
+(198, 38)  Centaur's Axe
+( 13, 40)  Shield of Naval Glory
+(171, 41)  ? Minor
+(226, 42)  ? Minor
+(220, 43)  Spyglass
+(127, 45)  Legs of Legion
+(199, 47)  ? Treasure
+( 52, 50)  Bird of Perception
+(225, 51)  Buckler of the Gnoll King
+(243, 51)  Crown of the Five Seas
+(228, 52)  ? Minor
+(140, 56)  Boots of Speed
+(172, 57)  ? Minor
+(227, 57)  Bow of Elven Cherrywood
+(157, 58)  ? Minor
+(118, 65)  Boots of Speed
+(147, 65)  ? Minor
+(143, 70)  ? Major
+(142, 71)  Titan's Cuirass
+(161, 71)  ? Major
+(169, 75)  ? Minor
+(152, 76)  ? Minor
+(111, 80)  Scales of the Greater Basilisk
+(112, 81)  Crown of Dragontooth
+(100, 82)  Arms of Legion
+(147, 82)  Clover of Fortune
+(184, 85)  Speculum
+(139, 88)  ? Treasure
+(238, 91)  Sphere of Permanence
+(153, 95)  ? Minor
+( 45, 97)  Orb of the Firmament
+(126, 97)  ? Treasure
+( 46, 98)  Endless Sack of Gold
+(139, 98)  Shield of the Dwarven Lords
+(130,103)  Glyph of Gallantry
+(250,103)  Head of Legion
+(137,107)  Spyglass
+(153,107)  Buckler of the Gnoll King
+(149,108)  Greater Gnoll's Flail
+(205,110)  Loins of Legion
+(135,112)  ? Minor
+(131,114)  Bow of Elven Cherrywood
+(100,116)  Pendant of Negativity
+(116,116)  Speculum
+(163,117)  Clover of Fortune
+(125,118)  Crown of the Five Seas
+(142,119)  Helm of the Alabaster Unicorn
+(164,122)  Boots of Speed
+(178,122)  ? Major
+( 30,123)  Orb of Driving Rain
+( 31,124)  Endless Bag of Gold
+(203,126)  Spyglass
+(128,127)  ? Major
+(132,127)  ? Minor
+(146,127)  Wayfarer's Boots
+(113,130)  Boots of Speed
+(136,131)  Equestrian's Gloves
+(167,132)  ? Minor
+(105,133)  Thunder Helmet
+(204,133)  Shield of the Dwarven Lords
+( 95,134)  ? Major
+(126,135)  Shaman's Puppet
+(127,136)  Dragon Wing Tabard
+(195,137)  Red Dragon Flame Tongue
+(196,138)  Scales of the Greater Basilisk
+(208,138)  Buckler of the Gnoll King
+(146,139)  Centaur's Axe
+(209,140)  Hellstorm Helmet
+(186,142)  Sentinel's Shield
+(205,142)  ? Treasure
+(218,143)  ? Major
+( 91,146)  Clover of Fortune
+(170,147)  Speculum
+( 85,148)  ? Treasure
+(110,148)  ? Treasure
+( 82,151)  Loins of Legion
+( 89,151)  ? Minor
+( 96,152)  ? Minor
+(235,155)  Arms of Legion
+(191,157)  ? Treasure
+( 75,159)  ? Treasure
+( 84,159)  ? Treasure
+(202,160)  Equestrian's Gloves
+(244,160)  ? Major
+(113,164)  Dead Man's Boots
+(192,164)  Boots of Speed
+(193,164)  ? Minor
+(219,164)  Speculum
+( 98,166)  Shield of the Dwarven Lords
+( 76,169)  Spirit of Oppression
+( 81,169)  Pendant of Death
+( 93,170)  Hellstorm Helmet
+( 93,171)  Amulet of the Undertaker
+( 67,172)  Rib Cage
+( 91,173)  Greater Gnoll's Flail
+(212,176)  ? Minor
+( 74,177)  Boots of Speed
+( 11,178)  Hellstorm Helmet
+( 19,179)  Torso of Legion
+( 13,180)  Scales of the Greater Basilisk
+(138,182)  Loins of Legion
+(185,183)  Orb of Silt
+(186,184)  Endless Sack of Gold
+( 31,185)  Speculum
+( 94,187)  Demon's Horseshoe
+( 85,191)  Legs of Legion
+( 11,192)  Boots of Speed
+( 37,193)  Equestrian's Gloves
+( 37,194)  ? Treasure
+( 60,196)  Clover of Fortune
+( 13,201)  Shield of the Dwarven Lords
+( 62,201)  Titan's Gladius
+( 42,215)  Spyglass
+(118,220)  Charm of Eclipse
+(125,226)  Centaur's Axe
+(158,227)  Spyglass
+(128,228)  Speculum
+(133,236)  ? Treasure
+(250,238)  Shackles of War
+(145,240)  Boots of Speed
+(139,241)  Shield of the Dwarven Lords
+(135,243)  Equestrian's Gloves
+(250,249)  Pendant of Negativity
+== underground ==
+(157,  4)  ? Relic
+(160,  4)  Sphere of Permanence
+( 14, 11)  Golden Bow
+(147, 15)  Sea Captain's Hat
+( 93, 25)  Inexhaustible Cart of Lumber
+(191, 26)  Scales of the Greater Basilisk
+( 28, 27)  ? Major
+(192, 31)  Dragon Scale Shield
+(159, 32)  Hellstorm Helmet
+(157, 33)  Greater Gnoll's Flail
+(206, 33)  Shield of the Dwarven Lords
+(135, 35)  Bowstring of the Unicorn's Mane
+(143, 35)  Trident of Dominion
+(192, 36)  Bow of Elven Cherrywood
+(216, 36)  Buckler of the Gnoll King
+(218, 37)  Necklace of Dragonteeth
+(219, 37)  Breastplate of Petrified Wood
+(118, 44)  Targ of the Rampaging Ogre
+(132, 47)  Spirit of Oppression
+(100, 51)  Sword of Hellfire
+( 94, 53)  ? Major
+( 93, 54)  Shield of the Damned
+(160, 57)  Shield of the Dwarven Lords
+(102, 58)  Shield of the Yawning Dead
+(176, 58)  Ladybird of Luck
+(222, 58)  Trident of Dominion
+(108, 61)  Eversmoking Ring of Sulfur
+(119, 61)  Ring of the Wayfarer
+(102, 64)  Tunic of the Cyclops King
+( 81, 66)  Plate of Dying Light
+(227, 66)  Bowstring of the Unicorn's Mane
+(105, 67)  Spirit of Oppression
+( 39, 69)  Celestial Necklace of Bliss
+(224, 69)  Ogre's Club of Havoc
+(109, 70)  Bowstring of the Unicorn's Mane
+(176, 74)  Ogre's Club of Havoc
+(109, 75)  Shield of Naval Glory
+(193, 79)  Equestrian's Gloves
+( 75, 84)  Ring of Suppression
+( 82, 84)  Endless Sack of Gold
+( 81, 85)  Hideous Mask
+(  1, 94)  Orb of Inhibition
+( 65, 96)  Plate of Dying Light
+(  0, 97)  Plate of Dying Light
+( 70, 97)  Crown of Dragontooth
+( 66, 99)  Shield of the Damned
+( 69, 99)  Sword of Hellfire
+( 72, 99)  Charm of Eclipse
+( 75,100)  Shaman's Puppet
+( 70,101)  Seal of Sunset
+(190,101)  Dragon Wing Tabard
+(188,102)  Clover of Fortune
+( 70,105)  Demon's Horseshoe
+( 58,106)  ? Major
+(104,109)  Crown of Dragontooth
+( 62,111)  ? Minor
+(185,111)  ? Minor
+(106,112)  ? Minor
+( 63,113)  ? Relic
+(140,113)  Necklace of Ocean Guidance
+( 76,115)  Ring of the Wayfarer
+( 54,125)  Sword of Hellfire
+( 55,125)  Shield of the Damned
+( 80,130)  ? Major
+(238,133)  Bowstring of the Unicorn's Mane
+(222,135)  Targ of the Rampaging Ogre
+(229,137)  Spirit of Oppression
+(198,138)  Ogre's Club of Havoc
+(156,142)  Legs of Legion
+(243,144)  Shield of Naval Glory
+(120,146)  Necklace of Dragonteeth
+(174,146)  ? Treasure
+(119,150)  Ring of Infinite Gems
+(168,150)  Shaman's Puppet
+( 88,151)  ? Major
+( 88,152)  Skull Helmet
+( 90,152)  ? Minor
+(220,152)  ? Minor
+(219,153)  ? Treasure
+( 47,154)  Spirit of Oppression
+( 33,155)  Bowstring of the Unicorn's Mane
+( 77,155)  Tunic of the Cyclops King
+(135,158)  Breastplate of Brimstone
+( 34,159)  Shield of Naval Glory
+(120,159)  Skull Helmet
+( 77,161)  Spirit of Oppression
+(112,164)  Scales of the Greater Basilisk
+(113,164)  Dragon Scale Shield
+( 74,167)  Trident of Dominion
+( 77,169)  Bowstring of the Unicorn's Mane
+(180,170)  Pendant of Negativity
+( 57,172)  Ogre's Club of Havoc
+(  6,179)  ? Treasure
+(218,183)  Helm of Heavenly Enlightenment
+( 51,184)  Clover of Fortune
+( 51,186)  Dragonbone Greaves
+( 30,192)  Everflowing Crystal Cloak
+( 94,193)  Dead Man's Boots
+(108,194)  Necklace of Ocean Guidance
+( 28,197)  Shield of the Yawning Dead
+( 46,198)  ? Minor
+( 50,198)  Targ of the Rampaging Ogre
+(129,198)  Shield of Naval Glory
+(130,198)  Plate of Dying Light
+( 80,200)  Demon's Horseshoe
+( 10,202)  Buckler of the Gnoll King
+(222,202)  Ring of Life
+(  1,203)  Quiet Eye of the Dragon
+(  5,204)  Red Dragon Flame Tongue
+(230,204)  Ring of Vitality
+(131,206)  Cape of Velocity
+(134,206)  Ring of the Wayfarer
+(211,206)  Ring of Vitality
+(143,207)  Necklace of Ocean Guidance
+(224,207)  Everflowing Crystal Cloak
+(217,210)  Everflowing Crystal Cloak
+(231,212)  Ring of Infinite Gems
+(124,214)  Trident of Dominion
+(185,214)  Tunic of the Cyclops King
+(237,216)  Ring of Infinite Gems
+(211,217)  Everpouring Vial of Mercury
+(233,220)  Ring of Life
+(221,221)  Endless Purse of Gold
+(246,222)  Endless Purse of Gold
+(209,223)  Ring of Life
+(225,226)  Eversmoking Ring of Sulfur
+(110,227)  Trident of Dominion
+(231,227)  Arms of Legion
+(169,229)  Pendant of Second Sight
+(113,230)  ? Treasure
+(139,230)  Ring of the Wayfarer
+(228,230)  Dragonbone Greaves
+( 55,231)  Ogre's Club of Havoc
+(220,232)  Ring of Vitality
+(163,240)  Crown of the Five Seas
+(107,241)  Spirit of Oppression
+(162,241)  Sentinel's Shield
+( 71,242)  Orb of Tempestuous Fire
+( 70,243)  Tome of Fire Magic
+( 71,243)  Armageddon's Blade
+( 70,244)  Lion's Shield of Courage
+( 71,244)  Shackles of War
+( 72,244)  Helm of Heavenly Enlightenment
+( 69,245)  Ring of the Wayfarer
+( 70,245)  Runes of Imminency
+( 71,245)  Titan's Cuirass
+( 72,245)  Seal of Sunset
+(235,245)  Everpouring Vial of Mercury
+( 70,246)  Boots of Speed
+( 72,246)  Cape of Velocity
+( 70,247)  Hideous Mask
+( 71,247)  Pendant of Dispassion
+(228,251)  Rib Cage

@@ -1,0 +1,71 @@
+{
+  "name": "mysterious-island-atlas",
+  "productName": "Mysterious Island Atlas",
+  "version": "1.0.0",
+  "description": "Interactive atlas for the HotA map The Mysterious Island with savegame import",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "sync": "rm -rf app && cp -r ../app app",
+    "dist": "npm run sync && electron-builder --win --linux"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "@electron/packager": "18.3.6",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.michal.mysteriousislandatlas",
+    "productName": "Mysterious Island Atlas",
+    "artifactName": "MysteriousIslandAtlas-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "README.txt",
+      "app/**/*"
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "maintainer": "michal <cigaaaaan@gmail.com>"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "michalkasarda",
+      "repo": "Heroes3HotaCompanion"
+    }
+  },
+  "author": "michal",
+  "homepage": "https://github.com/michalkasarda/Heroes3HotaCompanion",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michalkasarda/Heroes3HotaCompanion.git"
+  }
+}

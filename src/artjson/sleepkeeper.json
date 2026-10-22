@@ -1,0 +1,25 @@
+{
+	"sleepkeeper" : {
+		"type" : [ "HERO" ],
+		"slot" : "MISC",
+		"class" : "RELIC",
+		"value" : 7500,
+		"bonuses" : [
+			{
+				"type" : "MIND_IMMUNITY",
+				"val" : 0,
+				"valueType" : "BASE_NUMBER"
+			}
+		],
+		"graphics" : {
+			"image" : "hota/artifactsIcons/sleepkeeper",
+			"map" : "hota/artifactsMap/AVA0165",
+			"large" : "hota/artifactsCampaignBonuses/sleepkeeper"
+		},
+		"text" : {
+			"description" : "{Sleepkeeper}\r\n\r\nWhile equipped, the artifact provides the hero's creatures with immunity to Mind spells.",
+			"event" : "You are seeing the same dream for the third night already. A stranger begs you to buy an enchanted broom. You refuse every time, but the dream repeats night by night. You ask the first witch doctor you meet for help, but instead of a potion he gives you a plain statuette, ensuring that it will solve your problem. Having bought the statuette, you suddenly realize the witch doctor is sinisterly similar to the stranger from your dreams.",
+			"name" : "Sleepkeeper"
+		}
+	}
+}

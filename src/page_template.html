@@ -1,0 +1,1252 @@
+<title>Mysterious Island Atlas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#17120e; --panel:#241c15; --panel2:#2e251b; --line:#4a3c2a; --text:#ecdfc6; --muted:#a08f74;
+  --gold:#e8b94c; --gold-dim:#8a6a26; --red:#e4584c; --cyan:#62c4e8; --mag:#f06ad8; --focus:#f1d58a;
+  color-scheme:dark;
+}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:14px;overflow:hidden;}
+*{box-sizing:border-box;}
+#app{display:grid;grid-template-columns:320px 1fr 340px;height:100%;}
+aside.right{border-right:0;border-left:1px solid var(--line);grid-column:3;grid-row:1;}
+#view{grid-column:2;grid-row:1;}
+aside:first-child{grid-column:1;grid-row:1;}
+.half{flex:1;min-height:0;display:flex;flex-direction:column;}
+.half+.half{border-top:2px solid var(--line);}
+.half>h2{margin:0;padding:8px 14px 4px;font-family:Cinzel,Georgia,serif;font-size:13px;letter-spacing:.06em;color:var(--gold);text-transform:uppercase;}
+aside.right{font-size:12px;}
+aside.right .scroll{padding:8px 12px;gap:8px;}
+aside.right .controls{padding:8px 12px;gap:8px;}
+aside.right .hint2{font-size:11px;line-height:1.35;} aside.right .tiny{font-size:10px;color:var(--muted);}
+aside.right .btn{padding:4px 8px;font-size:11.5px;}
+aside.right .savelist{max-height:none;flex:1;min-height:80px;}
+aside.right .savelist li{padding:3px 8px;font-size:11.5px;} aside.right .savelist .m{font-size:10.5px;}
+aside.right #save-status{font-size:11px;}
+aside.right .keys{font-size:11.5px;gap:2px 8px;}
+aside.right .search input{padding:6px 10px;font-size:12px;}
+aside.right #qlist li{padding:4px 6px;} aside.right #qlist .q{font-size:11.5px;} aside.right #qlist .m{font-size:10.5px;}
+aside.right .hl li{padding:3px 6px;font-size:11.5px;}
+#pane-save .scroll{display:flex;flex-direction:column;}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;}
+header{padding:16px 16px 10px;border-bottom:1px solid var(--line);}
+h1{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacing:.04em;margin:0 0 4px;color:var(--gold);text-wrap:balance;}
+.sub{color:var(--muted);font-size:12px;margin:0;}
+.controls{padding:12px 16px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line);}
+.search{position:relative;}
+.search input{width:100%;padding:9px 32px 9px 12px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit;font-size:14px;}
+.search input:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--gold);}
+.search input::placeholder{color:var(--muted);}
+.search .hint{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none;}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+.seg button{flex:1;padding:7px 8px;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:500;cursor:pointer;}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--gold);}
+.seg button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);}
+.row label{display:flex;align-items:center;gap:5px;cursor:pointer;}
+.row input{accent-color:var(--gold);}
+.count{margin-left:auto;font-variant-numeric:tabular-nums;}
+#list{list-style:none;margin:0;padding:6px 8px;overflow-y:auto;flex:1;min-height:0;}
+#list li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-radius:6px;cursor:pointer;align-items:center;}
+#list li:hover{background:var(--panel2);}
+#list li.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--gold);}
+#list li:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+#list .n{font-weight:500;}
+#list li.rnd .n{color:var(--red);}
+#list li.rw .n{color:var(--cyan);}
+#list .v{grid-column:1/3;color:var(--muted);font-size:11.5px;}
+#list .go{grid-row:1;grid-column:2;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;font:inherit;padding:1px 7px;}
+#list .go:hover{color:var(--gold);border-color:var(--gold);}
+.cb{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;}
+.cb.ok{border-color:var(--gold);} .cb h3{margin:0;font-size:14px;color:var(--gold);display:flex;justify-content:space-between;align-items:center;} .cb h3 .st{font-size:11px;color:var(--muted);font-weight:500;}
+.cb.ok h3 .st{color:var(--gold);}
+.cb .part{display:grid;grid-template-columns:14px 1fr auto;gap:6px;align-items:center;font-size:12.5px;}
+.cb .part .dot{width:10px;height:10px;border-radius:50%;background:var(--red);} .cb .part.have .dot{background:#6fd36f;}
+.cb .part .w{color:var(--muted);font-size:11.5px;} .cb .src{cursor:pointer;} .cb .src:hover{color:var(--gold);text-decoration:underline;} .cb .part .go{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;font:inherit;padding:0 6px;}
+.cb .part .go:hover{color:var(--gold);border-color:var(--gold);}
+.skl{list-style:none;margin:0;padding:6px 8px;overflow-y:auto;flex:1;min-height:0;}
+.skl li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-radius:6px;cursor:pointer;align-items:center;}
+.skl li:hover,.skl li.sel{background:var(--panel2);}
+.skl .n{font-weight:500;color:#9be37a;} #spllist .n{color:#c9a2ff;}
+.skl .m{grid-column:1/3;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;display:flex;gap:8px;}
+.skl li.gone .n{text-decoration:line-through;opacity:.5;}
+.mk.sk{border-color:#9be37a;} .mk.sk span{color:#9be37a;} .mk.sk span i{font-style:normal;color:var(--text);opacity:.8;}
+.mk.spl{border-color:#c9a2ff;} .mk.spl span{color:#c9a2ff;} .mk.spl span i{font-style:normal;color:var(--text);opacity:.8;}
+#view.sk-off .mk.sk{display:none;} #view.spl-off .mk.spl{display:none;}
+#plist{list-style:none;margin:0;padding:6px 8px;overflow-y:auto;flex:1;min-height:0;}
+#plist li{padding:7px 10px;border-radius:6px;cursor:pointer;display:grid;gap:2px;}
+#plist li:hover,#plist li.sel{background:var(--panel2);}
+#plist .m{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;}
+#list .m{grid-column:1/3;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;display:flex;gap:8px;}
+#list .lv{padding:0 6px;border-radius:999px;border:1px solid var(--line);}
+#list .empty{color:var(--muted);padding:14px 10px;cursor:default;}
+#view{position:relative;overflow:hidden;background:#000;touch-action:none;cursor:grab;outline:none;}
+#view.drag{cursor:grabbing;}
+#view:focus-visible{box-shadow:inset 0 0 0 2px var(--focus);}
+#stage,#mstage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
+#objc{position:absolute;left:0;top:0;pointer-events:none;}
+.layer,.marks{position:absolute;left:0;top:0;width:100%;height:100%;}
+.layer img{position:absolute;display:block;max-width:none;width:1008px;height:1008px;user-select:none;-webkit-user-drag:none;pointer-events:none;}
+.layer img.mini{width:100%;height:100%;}
+.layer img.mini{left:0;top:0;}
+#view.px .layer img{image-rendering:pixelated;}
+.mk{position:absolute;width:34px;height:34px;margin:-1px 0 0 -1px;border:3px solid var(--gold);border-radius:3px;box-shadow:0 0 0 1px #000;}
+.mk.rnd{border-color:var(--red);}
+.mk.rw{border-color:var(--cyan);border-style:dashed;}
+.mk.rw span{color:var(--cyan);}
+.mk.rw span i{font-style:normal;color:var(--text);opacity:.8;}
+.mk span{position:absolute;left:38px;top:4px;white-space:nowrap;background:rgba(0,0,0,.78);color:var(--gold);padding:2px 6px;border-radius:3px;font-weight:600;font-size:15px;line-height:1.2;}
+.mk.rnd span{color:var(--red);}
+.mk.flip span{left:auto;right:38px;}
+#view.lbl-off .mk:not(.active) span{display:none;}
+.mk.active{z-index:3;border-color:#fff;}
+.mk.active::before{content:"";position:absolute;inset:-14px;border:4px solid var(--gold);border-radius:50%;animation:pulse 1.2s ease-out infinite;}
+.mk.active.rnd::before{border-color:var(--red);}
+.mk.active.rw::before{border-color:var(--cyan);}
+@keyframes pulse{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
+#status{position:absolute;left:0;right:0;bottom:0;display:flex;gap:16px;padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(23,18,14,.85);color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;pointer-events:none;}
+#status b{color:var(--text);font-weight:500;}
+.zoom{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:4px;}
+.zoom button{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:18px;border-radius:6px;cursor:pointer;}
+.zoom button:focus-visible{outline:2px solid var(--focus);}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);}
+.tabs button{flex:1;padding:9px 6px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;}
+.tabs button[aria-selected="true"]{color:var(--gold);border-bottom-color:var(--gold);}
+.tabs button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+.pane{display:flex;flex-direction:column;min-height:0;flex:1;}
+.pane[hidden]{display:none!important;}
+.scroll{overflow-y:auto;flex:1;min-height:0;padding:12px 16px;display:flex;flex-direction:column;gap:12px;}
+.field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);}
+.field .val{color:var(--text);font-size:13px;font-variant-numeric:tabular-nums;}
+.btns{display:flex;gap:6px;flex-wrap:wrap;}
+.btn{padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);font:inherit;font-size:12.5px;cursor:pointer;}
+.btn.on{border-color:var(--gold);color:var(--gold);}
+.btn.primary{background:var(--gold);color:#1a1409;border-color:var(--gold);font-weight:600;}
+.btn:focus-visible{outline:2px solid var(--focus);}
+select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit;}
+.res{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;}
+.res .big{font-family:Cinzel,Georgia,serif;font-size:20px;color:var(--gold);font-variant-numeric:tabular-nums;}
+.res ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;color:var(--text);}
+.res li.fight{color:var(--red);} .res li.gate{color:var(--cyan);} .res li.portal{color:var(--mag);} .res li.water{color:#8fb8ff;}
+.hint2{color:var(--muted);font-size:12px;line-height:1.45;}
+#plist li .n{color:var(--mag);}
+.mk.po{border-color:var(--mag);border-radius:50%;} .mk.po span{color:var(--mag);}
+.mk.po.link{border-color:#fff;box-shadow:0 0 0 3px var(--mag);}
+.mk.sg{border-color:#c9a2ff;border-radius:50%;} .mk.sg span{color:#c9a2ff;}
+.mk.wh{border-color:#8fb8ff;border-radius:50%;} .mk.wh span{color:#8fb8ff;}
+#view.po-off .mk.po,#view.po-off .mk.sg,#view.po-off .mk.wh{display:none;}
+#route-svg,#link-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;}
+.pt{position:absolute;width:32px;height:32px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #000;}
+.pt.a{background:rgba(96,220,120,.55);} .pt.b{background:rgba(255,120,60,.55);}
+.pt::after{position:absolute;left:36px;top:4px;color:#fff;font-weight:700;font-size:15px;text-shadow:0 0 3px #000,0 0 3px #000;}
+.pt.a::after{content:"Start";} .pt.b::after{content:"Goal";}
+#view.pick{cursor:crosshair;}
+
+.keys{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12.5px;}
+.keys label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+.keys .sw{width:12px;height:12px;border-radius:3px;border:1px solid #000;display:inline-block;}
+.keys .kc{color:var(--muted);font-size:11px;margin-left:auto;font-variant-numeric:tabular-nums;}
+#qlist{list-style:none;margin:0;padding:6px 8px;overflow-y:auto;flex:1;min-height:0;}
+#qlist li{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;padding:6px 8px;border-radius:6px;align-items:start;cursor:pointer;}
+#qlist li:hover{background:var(--panel2);}
+#qlist li.done{opacity:.55;}
+#qlist li input{margin-top:3px;accent-color:var(--gold);}
+#qlist .q{font-size:12.5px;}
+#qlist .m{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;}
+.mk.gd{width:30px;height:30px;margin:0;border-width:3px;border-radius:2px;}
+.mk.gd span{font-size:12px;padding:1px 4px;left:34px;top:5px;}
+.mk.gd.open{border-style:dotted;opacity:.55;}
+.mk.gd.open span{display:none;}
+.mk.gd.q{border-color:#ff9a3c;} .mk.gd.q span{color:#ff9a3c;}
+#view.gd-off .mk.gd{display:none;}
+
+.hl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;}
+.hl li{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12.5px;}
+.hl li:hover{background:var(--panel2);}
+.hl .dot{width:10px;height:10px;border-radius:50%;border:1px solid #000;}
+.hl .m{color:var(--muted);font-size:11.5px;margin-left:auto;font-variant-numeric:tabular-nums;}
+.hl .go{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;font:inherit;padding:0 6px;}
+.mk.hero{border:0;width:34px;height:34px;} .mk.hero span{color:#fff;top:-16px;}
+#view:not(.game) .mk.hero{display:none;}
+#view.game.gone-on .mk.gone{display:none;}
+#list li.gone .n,#list li.gone .v{text-decoration:line-through;opacity:.5;}
+.fogc{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;display:none;}
+#view.game.fog-on .fogc.cur{display:block;}
+#save-file{font:inherit;color:var(--text);}
+.pathbox{display:flex;gap:6px;align-items:flex-start;}
+.pathbox code{font-size:11px;word-break:break-all;background:var(--bg);padding:6px;border-radius:4px;flex:1;}
+#pane-save.drop{outline:2px dashed var(--gold);outline-offset:-6px;}
+.mk.own{display:none!important;}
+.mk.own span{display:none;}
+#view:not(.game) .mk.own{display:none;}
+
+.modebar{position:absolute;left:50%;top:12px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:5;}
+.mrow{display:flex;align-items:center;}
+.mrow.lv button{font-size:13px;padding:6px 18px;}
+.modebar button{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacing:.06em;padding:10px 28px;border:2px solid var(--gold-dim);background:rgba(23,18,14,.92);color:var(--muted);cursor:pointer;}
+.modebar button:first-child{border-radius:8px 0 0 8px;} .modebar button:nth-child(2){border-radius:0 8px 8px 0;border-left:0;}
+.modebar button.on{background:var(--gold);color:#1a1409;border-color:var(--gold);}
+.modebar button:disabled{opacity:.45;cursor:not-allowed;}
+.modebar button:focus-visible{outline:2px solid var(--focus);}
+.pdots{display:flex;gap:5px;margin-left:12px;background:rgba(23,18,14,.85);padding:6px 8px;border-radius:8px;}
+.pdots button{width:22px;height:22px;border-radius:50%;border:2px solid #000;cursor:pointer;padding:0;opacity:.55;}
+.pdots button.on{opacity:1;box-shadow:0 0 0 2px #fff;}
+.pdots button:focus-visible{outline:2px solid var(--focus);}
+.modebar #mode-info{margin-left:12px;font-size:12px;color:var(--text);background:rgba(23,18,14,.85);padding:6px 10px;border-radius:6px;white-space:nowrap;}
+.modebar #mode-info:empty{display:none;}
+@media (max-width:760px){.modebar button{font-size:14px;padding:8px 16px;} .modebar #mode-info{display:none;}}
+.savelist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:6px;}
+.savelist li{display:flex;gap:8px;align-items:center;padding:6px 10px;cursor:pointer;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.savelist li:hover{background:var(--panel2);} .savelist li.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--gold);}
+.savelist .m{color:var(--muted);margin-left:auto;font-size:11.5px;}
+
+#tip{position:absolute;z-index:9;max-width:320px;background:linear-gradient(#2a2115,#1a140d);border:2px solid var(--gold-dim);box-shadow:0 0 0 1px #000,0 6px 18px rgba(0,0,0,.6);border-radius:4px;padding:8px 10px;font-size:12.5px;color:var(--text);pointer-events:none;}
+#tip.art{display:grid;grid-template-columns:48px 1fr;gap:8px;}
+#tip .aic{grid-row:1/4;}
+.aic{width:44px;height:44px;background:url(articons.png) no-repeat;border:1px solid #000;border-radius:3px;flex:none;}
+.aic.s{width:22px;height:22px;background-size:308px 264px;}
+#list li .aic.s{grid-row:1/3;grid-column:1;} #list li.hasic{grid-template-columns:26px 1fr auto;} #list li.hasic .n{grid-column:2;} #list li.hasic .m,#list li.hasic .v{grid-column:2/4;} #list li.hasic .go{grid-column:3;grid-row:1;}
+.cb .part{grid-template-columns:14px 26px 1fr auto;} .cb h3 .aic.s{margin-right:6px;} .cb h3 .ttl{display:flex;align-items:center;}
+#menu{position:fixed;z-index:50;min-width:220px;max-width:360px;max-height:60vh;overflow-y:auto;background:var(--panel);border:1px solid var(--gold-dim);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.6);padding:4px;font-size:12.5px;}
+#menu .mi{padding:6px 10px;border-radius:4px;cursor:pointer;display:flex;flex-direction:column;gap:1px;}
+#menu .mi:hover{background:var(--panel2);}
+#menu .mi .w{color:var(--muted);font-size:11px;}
+#menu .ml{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+#menu .mr{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;font:inherit;font-size:11px;padding:1px 6px;}
+#menu .mr:hover{color:var(--gold);border-color:var(--gold);}
+#menu .mh{padding:6px 10px 2px;color:var(--gold);font-size:11px;letter-spacing:.05em;text-transform:uppercase;}
+#menu .mi.sep{border-top:1px solid var(--line);margin-top:2px;}
+#tip .tn{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:14px;color:var(--gold);margin-bottom:3px;}
+#tip .tt{color:var(--muted);font-size:11px;margin-bottom:4px;}
+#tip .tx{line-height:1.35;}
+#tip .td{color:var(--muted);margin-top:4px;font-size:12px;}
+#tip .to{display:flex;align-items:center;gap:6px;margin-top:4px;}
+#tip .sw{width:14px;height:10px;border:1px solid #000;display:inline-block;}
+#toggle{display:none;}
+@media (max-width:1100px){
+  #app{grid-template-columns:300px 1fr 300px;}
+}
+@media (max-width:760px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}
+  aside.right{max-height:40%;grid-column:1;grid-row:3;} #view{grid-column:1;grid-row:2;} aside:first-child{grid-row:1;}
+  aside{border-right:0;border-bottom:1px solid var(--line);max-height:50%;}
+  header{padding:12px 16px 8px;}
+  #list{max-height:34vh;}
+  .mk span{font-size:13px;}
+}
+@media (prefers-reduced-motion:reduce){.mk.active::before{animation:none;opacity:.8;transform:none;}}
+</style>
+<div id="app">
+<aside>
+  <header>
+    <h1>The Mysterious Island</h1>
+    <p class="sub">HotA v1-5-j, 252x252, two levels. Gold = artifact on the ground, red = random artifact, cyan = reward (Seer's Hut, guard, Pandora, bank, corpse, prison). Coordinates match the editor.</p>
+  </header>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-art" aria-selected="true">Artifacts</button>
+    <button role="tab" id="tab-sk" aria-selected="false">Skills</button>
+    <button role="tab" id="tab-spl" aria-selected="false">Spells</button>
+    <button role="tab" id="tab-cb" aria-selected="false">Combos</button>
+    <button role="tab" id="tab-route" aria-selected="false">Route</button>
+    <button role="tab" id="tab-po" aria-selected="false">Portals</button>
+    
+  </div>
+  <div class="pane" id="pane-art">
+  <div class="controls">
+    <div class="search">
+      <input id="q" type="search" placeholder="Search artifact" autocomplete="off" aria-label="Search artifacts">
+      <span class="hint">Enter = next</span>
+    </div>
+    <div class="seg" role="group" aria-label="Map level">
+      <button id="btn-ow" aria-pressed="true">Surface</button>
+      <button id="btn-ug" aria-pressed="false">Underground</button>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="f-fixed" checked> Fixed</label>
+      <label><input type="checkbox" id="f-rnd" checked> Random (?)</label>
+      <label><input type="checkbox" id="f-rw" checked> Rewards</label>
+      <label><input type="checkbox" id="f-lbl" checked> Labels</label>
+      <span class="count" id="count"></span>
+    </div>
+  </div>
+  <ul id="list" role="listbox" aria-label="Artifacts"></ul>
+  </div>
+  <div class="pane" id="pane-sk" hidden>
+    <div class="controls">
+      <div class="search"><input id="skq" type="search" placeholder="Search skill or place" autocomplete="off" aria-label="Search skills"></div>
+      <div class="row"><label><input type="checkbox" class="skf" data-cat="sk" value="Witch Hut" checked> Witch Huts</label><label><input type="checkbox" class="skf" data-cat="sk" value="Scholar" checked> Scholars</label><label><input type="checkbox" class="skf" data-cat="sk" value="University" checked> Universities</label><label><input type="checkbox" id="sk-show" checked> On map</label><span class="count" id="skcount"></span></div>
+    </div>
+    <ul id="sklist" class="skl" role="listbox" aria-label="Skill sources"></ul>
+  </div>
+  <div class="pane" id="pane-spl" hidden>
+    <div class="controls">
+      <div class="search"><input id="splq" type="search" placeholder="Search spell or place" autocomplete="off" aria-label="Search spells"></div>
+      <div class="row"><label><input type="checkbox" class="skf" data-cat="spl" value="Shrine" checked> Shrines</label><label><input type="checkbox" class="skf" data-cat="spl" value="Scholar" checked> Scholars</label><label><input type="checkbox" id="spl-show" checked> On map</label><span class="count" id="splcount"></span></div>
+    </div>
+    <ul id="spllist" class="skl" role="listbox" aria-label="Spell sources"></ul>
+  </div>
+  <div class="pane" id="pane-cb" hidden>
+    <div class="scroll" id="cblist"><p class="hint2">Load a save and pick your colour: this lists every combination artifact, which parts your heroes already carry (equipped or in the backpack, including heroes inside towns), and where the missing parts lie on the map.</p></div>
+  </div>
+  <div class="pane" id="pane-route" hidden>
+    <div class="scroll">
+      <p class="hint2"><b>Left-click</b> the map to set the start, <b>right-click</b> to set the goal; the route redraws whenever both are set. Or use a town / an artifact's &rarr; button. Cost uses H3 movement points: road 50&ndash;75, dirt/grass/lava/subterranean 100, rough/wasteland 125, sand/snow 150, swamp 175, diagonal &times;1.41. Routes may pass through any object entrance (towns, dwellings, shrines, garrisons, gates, monoliths, subterranean gates), since a hero stands on the entrance tile and can leave it in any direction. The report lists what blocks the way.</p>
+      <div class="field"><span>Start</span><span class="val" id="r-start">not set</span>
+        <div class="btns"><button class="btn" id="b-start">Pick on map</button><select class="sel" id="town-start" aria-label="Start from town"><option value="">from town&hellip;</option></select></div></div>
+      <div class="field"><span>Goal</span><span class="val" id="r-goal">not set</span>
+        <div class="btns"><button class="btn" id="b-goal">Pick on map</button><select class="sel" id="town-goal" aria-label="Goal town"><option value="">to town&hellip;</option></select></div></div>
+      <div class="row"><label><input type="checkbox" id="o-mon"> Avoid monsters</label><label><input type="checkbox" id="o-gate"> Avoid guards/gates</label><label><input type="checkbox" id="o-boat" checked> Allow water (boat)</label></div>
+      <div class="btns"><button class="btn primary" id="b-go">Find route</button><button class="btn" id="b-swap">Swap</button><button class="btn" id="b-clear">Clear</button></div>
+      <div class="res" id="r-res" hidden></div>
+    </div>
+  </div>
+  <div class="pane" id="pane-po" hidden>
+    <div class="controls">
+      <div class="search"><input id="pq" type="search" placeholder="Filter portals (channel, gate, whirlpool)" autocomplete="off" aria-label="Filter portals"></div>
+      <div class="row"><label><input type="checkbox" id="f-po" checked> Show on map</label><span class="count" id="pcount"></span></div>
+    </div>
+    <ul id="plist" role="listbox" aria-label="Portals"></ul>
+  </div>
+  </aside>
+<aside class="right">
+<div class="half" id="pane-save"><h2>Save</h2>
+    <div class="scroll">
+      
+      <div id="srv-ui" hidden>
+        <div class="row"><span id="srv-path" class="hint2 tiny" style="word-break:break-all"></span></div>
+        <div class="btns"><button class="btn" id="srv-refresh">Refresh list</button><button class="btn" id="srv-latest">Load newest</button><button class="btn" id="srv-pick" hidden>Choose folder...</button></div>
+        <ul class="savelist" id="srv-list"></ul>
+      </div>
+      <div id="file-ui">
+        <input type="file" id="save-file" multiple aria-label="Save files">
+        <p class="hint2">Saves live in a hidden folder, so in the file dialog press <b>Ctrl+L</b> and paste this path (or drop the files anywhere on this panel):</p>
+        <div class="pathbox"><code id="save-path">/home/michal-work/.var/app/com.usebottles.bottles/data/bottles/bottles/Heroes3/drive_c/Heroes3Complete/Games/- The Mysterious Island -/</code><button class="btn" id="copy-path">Copy</button></div>
+      </div>
+      <select class="sel" id="save-pick" aria-label="Loaded saves" hidden></select>
+      <div id="save-status" class="hint2">No save loaded.</div>
+      <div id="save-ui" hidden>
+        <div class="row" hidden><label><input type="checkbox" id="g-mode" checked> Game mode</label><label><input type="checkbox" id="g-fog" checked> Show fog</label><label><input type="checkbox" id="g-hide" checked> Grey out removed</label></div>
+        <select class="sel" id="g-player" aria-label="Your player color" hidden></select>
+        <div class="btns"><button class="btn" id="g-import">Copy passed guards into manual ticks (keeps them in Map mode)</button></div>
+        <div class="field"><span>Heroes on map</span><ul id="hlist" class="hl"></ul></div>
+      </div>
+    </div>
+  </div>
+<div class="half" id="pane-prog"><h2>Progress</h2>
+    <div class="controls">
+      <p class="hint2 tiny" style="margin:0">Per player colour. Keys are manual; guards removed in the save count as passed. Click a guard on the map to toggle.</p>
+      <div class="row"><label><input type="checkbox" id="o-keys" checked> Routing uses my keys</label><label><input type="checkbox" id="o-quests" checked> Routing uses quest progress</label><label><input type="checkbox" id="f-gd" checked> Show guards</label></div>
+      <div class="keys" id="keys"></div>
+      <div class="search"><input id="qq" type="search" placeholder="Filter quest guards (condition, coords)" autocomplete="off" aria-label="Filter quest guards"></div>
+      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
+    </div>
+    <ul id="qlist" role="listbox" aria-label="Quest guards"></ul>
+  </div>
+  </aside>
+<div id="view" class="px" tabindex="0" aria-label="Map, drag to pan, scroll to zoom">
+  <div id="stage">
+    <div class="layer" id="L-ow"></div>
+    <div class="layer" id="L-ug" hidden></div>
+  </div>
+  <canvas id="objc"></canvas>
+  <div id="mstage">
+    <div class="marks" id="M-ow"></div>
+    <div class="marks" id="M-ug" hidden></div>
+    <canvas id="fog-ow" class="fogc" width="252" height="252"></canvas>
+    <canvas id="fog-ug" class="fogc" width="252" height="252"></canvas>
+    <svg id="link-svg"></svg>
+    <svg id="route-svg"></svg>
+    <div id="pt-a" class="pt a" hidden></div><div id="pt-b" class="pt b" hidden></div>
+  </div>
+  <div class="modebar"><div class="mrow" role="group" aria-label="View mode"><button id="mode-map" class="on">Map</button><button id="mode-game" disabled title="Load a save first">Game</button><span class="pdots" id="pdots" role="group" aria-label="Your player"></span><span id="mode-info"></span></div><div class="mrow lv" role="group" aria-label="Level"><button id="lv-ow" class="on">Surface</button><button id="lv-ug">Underground</button></div></div>
+  <div class="zoom"><button id="z-in" aria-label="Zoom in">+</button><button id="z-out" aria-label="Zoom out">&minus;</button><button id="z-fit" aria-label="Fit map" style="font-size:12px">fit</button></div>
+  <div id="tip" hidden></div>
+  <div id="menu" hidden></div>
+  <div id="status"><span>Tile <b id="s-xy">-</b></span><span>Zoom <b id="s-z">-</b></span><span id="s-sel"></span></div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+const DATA = __DATA__;
+const N = DATA.size, TS = DATA.tile, PX = N * 32, NT = PX / TS;
+const view = document.getElementById('view'), stage = document.getElementById('stage');
+const layers = {ow: document.getElementById('L-ow'), ug: document.getElementById('L-ug')};
+const marks = {ow: document.getElementById('M-ow'), ug: document.getElementById('M-ug')};
+const LV = {ow: 'Surface', ug: 'Underground'};
+stage.style.width = PX + 'px'; stage.style.height = PX + 'px';
+const mstage = document.getElementById('mstage'); mstage.style.width = PX + 'px'; mstage.style.height = PX + 'px';
+const artByOi = new Map();
+const arts = DATA.arts.map((a, i) => ({...a, i, lv: a.z ? 'ug' : 'ow', label: a.r === 1 ? '? ' + a.n : a.n}));
+arts.sort((a, b) => a.r - b.r || a.n.localeCompare(b.n) || a.z - b.z || a.y - b.y || a.x - b.x);
+for (const a of arts) artByOi.set(a.oi, a);
+
+let level = 'ow', s = 0.1, tx = 0, ty = 0, sel = null, loaded = {ow: new Set(), ug: new Set()};
+let SAVE = null;   // {present, fog, heroes, name}
+let SPR = null, PAGES = [], FLAGS = [], OBJ = {0: [], 1: []}, drawReq = false;
+const PLAYER = ['Red', 'Blue', 'Tan', 'Green', 'Orange', 'Purple', 'Teal', 'Pink'];
+const PLCOL = ['#e03c3c', '#3c6ce0', '#c8a070', '#3cb050', '#e08c3c', '#a050c0', '#40b0b0', '#e070b0'];
+let curPlayer = 0; try { curPlayer = Math.min(7, Math.max(0, +(localStorage.getItem('mi-player') || 0))); } catch (e) {}
+let progAll = {};
+try { const j = JSON.parse(localStorage.getItem('mi-progress2') || ''); if (j && typeof j === 'object') progAll = j; } catch (e) {}
+try { if (!Object.keys(progAll).length) { const old = JSON.parse(localStorage.getItem('mi-progress') || ''); if (old && old.keys) progAll[curPlayer] = old; } } catch (e) {}
+for (let p = 0; p < 8; p++) if (!progAll[p]) progAll[p] = {keys: {}, done: {}};
+let prog = progAll[curPlayer];
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+for (const lv of ['ow', 'ug']) {
+  const mini = new Image(); mini.className = 'mini'; mini.src = lv + '_mini.webp'; mini.width = PX; mini.height = PX; layers[lv].appendChild(mini);
+}
+const mkEls = new Map();
+for (const a of arts) {
+  const el = document.createElement('div');
+  el.className = 'mk' + (a.r === 1 ? ' rnd' : a.r === 2 ? ' rw' : '') + (a.x > N - 12 ? ' flip' : '');
+  el.style.left = a.x * 32 + 'px'; el.style.top = a.y * 32 + 'px';
+  const sp = document.createElement('span');
+  if (a.r === 2) { const i = document.createElement('i'); i.textContent = a.k + ': '; sp.appendChild(i); }
+  sp.appendChild(document.createTextNode(a.label)); el.appendChild(sp);
+  marks[a.lv].appendChild(el); mkEls.set(a.i, el);
+}
+
+function apply() {
+  stage.style.transform = mstage.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+  requestDraw();
+  view.classList.toggle('px', s >= 1);
+  view.classList.toggle('lbl-off', !fLbl.checked || s < 0.45);
+  document.getElementById('s-z').textContent = Math.round(s * 100) + '%';
+  loadTiles();
+}
+function loadTiles() {
+  const w = view.clientWidth, h = view.clientHeight;
+  const x0 = Math.max(0, Math.floor(-tx / s / TS)), y0 = Math.max(0, Math.floor(-ty / s / TS));
+  const x1 = Math.min(NT - 1, Math.floor((w - tx) / s / TS)), y1 = Math.min(NT - 1, Math.floor((h - ty) / s / TS));
+  if (s < 0.2) return;
+  for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
+    const k = xx + '_' + yy;
+    if (loaded[level].has(k)) continue;
+    loaded[level].add(k);
+    const im = new Image(); im.src = `${level}_${xx}_${yy}.webp`; im.width = TS; im.height = TS;
+    im.style.left = xx * TS + 'px'; im.style.top = yy * TS + 'px'; im.decoding = 'async';
+    layers[level].appendChild(im);
+  }
+}
+function clamp() {
+  const w = view.clientWidth, h = view.clientHeight;
+  s = Math.min(4, Math.max(Math.min(w, h) / PX * 0.9, s));
+  tx = Math.min(w - 40, Math.max(40 - PX * s, tx));
+  ty = Math.min(h - 40, Math.max(40 - PX * s, ty));
+}
+function zoomAt(f, cx, cy) {
+  const ns = Math.min(4, Math.max(0.05, s * f)); f = ns / s;
+  tx = cx - (cx - tx) * f; ty = cy - (cy - ty) * f; s = ns; clamp(); apply();
+}
+function fit() {
+  const w = view.clientWidth, h = view.clientHeight;
+  s = Math.min(w, h) / PX; tx = (w - PX * s) / 2; ty = (h - PX * s) / 2; apply();
+}
+let anim = null;
+function flyTo(x, y, targetS) {
+  const w = view.clientWidth, h = view.clientHeight;
+  const ns = targetS, ntx = w / 2 - (x * 32 + 16) * ns, nty = h / 2 - (y * 32 + 16) * ns;
+  if (reduced) { s = ns; tx = ntx; ty = nty; apply(); return; }
+  const s0 = s, tx0 = tx, ty0 = ty, t0 = performance.now(); cancelAnimationFrame(anim);
+  const step = t => {
+    let k = Math.min(1, (t - t0) / 550); k = 1 - Math.pow(1 - k, 3);
+    s = s0 + (ns - s0) * k; tx = tx0 + (ntx - tx0) * k; ty = ty0 + (nty - ty0) * k; apply();
+    if (k < 1) anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+let setLevel = function (lv) {
+  level = lv;
+  for (const k of ['ow', 'ug']) { layers[k].hidden = k !== lv; marks[k].hidden = k !== lv; document.getElementById('btn-' + k).setAttribute('aria-pressed', k === lv); document.getElementById('lv-' + k).classList.toggle('on', k === lv); }
+  apply();
+};
+function select(a) {
+  if (sel) mkEls.get(sel.i).classList.remove('active');
+  sel = a;
+  const el = mkEls.get(a.i); el.classList.add('active');
+  if (level !== a.lv) setLevel(a.lv);
+  flyTo(a.x, a.y, Math.max(s, 1.5));
+  document.getElementById('s-sel').innerHTML = `<b>${a.label}</b> at (${a.x}, ${a.y}) ${LV[a.lv]}` + (a.r === 2 ? ` via ${a.k}: ${a.v}` : '');
+  for (const li of list.children) li.classList.toggle('sel', +li.dataset.i === a.i);
+  const li = list.querySelector('li.sel'); if (li) li.scrollIntoView({block: 'nearest'});
+}
+
+// list + search
+const list = document.getElementById('list'), q = document.getElementById('q');
+const fFixed = document.getElementById('f-fixed'), fRnd = document.getElementById('f-rnd'), fRw = document.getElementById('f-rw'), fLbl = document.getElementById('f-lbl');
+let shown = [], cursor = -1;
+function matches(a, t) {
+  const hay = (a.label + ' ' + LV[a.lv] + ' ' + (a.r === 1 ? 'random' : '') + ' ' + (a.k || '') + ' ' + (a.v || '')).toLowerCase();
+  return t.split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+function refresh() {
+  const t = q.value.trim().toLowerCase();
+  shown = arts.filter(a => (a.r === 1 ? fRnd.checked : a.r === 2 ? fRw.checked : fFixed.checked) && (!t || matches(a, t)));
+  list.innerHTML = '';
+  for (const a of arts) mkEls.get(a.i).hidden = !shown.includes(a);
+  if (!shown.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'No artifact matches "' + q.value + '".'; list.appendChild(li); }
+  for (const a of shown) {
+    const li = document.createElement('li'); li.dataset.i = a.i; li.tabIndex = 0; li.setAttribute('role', 'option');
+    li.className = (a.r === 1 ? 'rnd' : a.r === 2 ? 'rw' : '') + (sel && sel.i === a.i ? ' sel' : '') + ((gone(a.oi) || seerDone(a)) && hideGone() ? ' gone' : '');
+    const aid = a.r === 0 ? a.id : resolvedArtId(a); if (aid >= 0) { li.dataset.art = aid; li.classList.add('hasic'); }
+    li.innerHTML = (aid >= 0 ? `<span class="aic s" style="${iconStyle(aid, true)}"></span>` : '') + `<span class="n">${labelOf(a)}${resolvedArt(a) ? ' <span class="lv">was ' + a.label + '</span>' : ''}</span><button class="go" title="Route to this">&rarr;</button><span class="m"><span class="lv">${LV[a.lv]}</span><span>${a.x}, ${a.y}</span></span>` + (a.r === 2 ? `<span class="v">${a.k}: ${a.v}${seerMask(a.oi) ? ' \u00b7 done by ' + PLAYER.filter((_, p) => seerMask(a.oi) >> p & 1).join(', ') : ''}</span>` : '');
+    li.querySelector('.go').addEventListener('click', e => { e.stopPropagation(); goMenuFor(a, e.clientX, e.clientY); });
+    li.addEventListener('click', () => { cursor = shown.indexOf(a); select(a); });
+    li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cursor = shown.indexOf(a); select(a); } });
+    list.appendChild(li);
+  }
+  document.getElementById('count').textContent = shown.length + ' / ' + arts.length;
+  cursor = -1;
+}
+q.addEventListener('input', refresh);
+q.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && shown.length) { e.preventDefault(); cursor = (cursor + 1) % shown.length; select(shown[cursor]); }
+  if (e.key === 'Escape') { q.value = ''; refresh(); }
+});
+fFixed.addEventListener('change', refresh); fRnd.addEventListener('change', refresh); fRw.addEventListener('change', refresh);
+fLbl.addEventListener('change', apply);
+document.getElementById('btn-ow').addEventListener('click', () => setLevel('ow'));
+document.getElementById('btn-ug').addEventListener('click', () => setLevel('ug'));
+document.getElementById('z-in').addEventListener('click', () => zoomAt(1.5, view.clientWidth / 2, view.clientHeight / 2));
+document.getElementById('z-out').addEventListener('click', () => zoomAt(1 / 1.5, view.clientWidth / 2, view.clientHeight / 2));
+document.getElementById('z-fit').addEventListener('click', fit);
+
+// pan / zoom input
+const ptrs = new Map(); let last = null, pinch = null;
+document.body.appendChild(document.getElementById('menu'));
+for (const el of document.querySelectorAll('.modebar, .zoom, #status, #menu')) { for (const ev of ['pointerdown', 'pointerup', 'pointermove', 'wheel']) el.addEventListener(ev, e => e.stopPropagation()); }
+let tipHold = false;
+view.addEventListener('pointerdown', e => {
+  if (e.target.closest('.modebar, .zoom, #menu')) return;
+  if (e.button === 2) { tipHold = true; tipAt(e.clientX, e.clientY); return; }
+  view.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (ptrs.size === 1) { last = {x: e.clientX, y: e.clientY}; view.classList.add('drag'); cancelAnimationFrame(anim); }
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = {d: Math.hypot(a.x - b.x, a.y - b.y)}; }
+});
+view.addEventListener('pointermove', e => {
+  if (tipHold) { tipAt(e.clientX, e.clientY); return; }
+  const r = view.getBoundingClientRect();
+  const mx = (e.clientX - r.left - tx) / s / 32, my = (e.clientY - r.top - ty) / s / 32;
+  document.getElementById('s-xy').textContent = (mx >= 0 && my >= 0 && mx < N && my < N) ? `${Math.floor(mx)}, ${Math.floor(my)}` : '-';
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (ptrs.size === 2 && pinch) {
+    const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+    zoomAt(d / pinch.d, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top); pinch.d = d; return;
+  }
+  if (last) { tx += e.clientX - last.x; ty += e.clientY - last.y; last = {x: e.clientX, y: e.clientY}; clamp(); apply(); }
+});
+const up = e => { if (tipHold) { tipHold = false; tip.hidden = true; } ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) { last = null; view.classList.remove('drag'); } else { const p = [...ptrs.values()][0]; last = {x: p.x, y: p.y}; } };
+view.addEventListener('pointerup', up); view.addEventListener('pointercancel', up);
+view.addEventListener('wheel', e => { e.preventDefault(); const r = view.getBoundingClientRect(); zoomAt(Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top); }, {passive: false});
+view.addEventListener('keydown', e => {
+  const st = 80;
+  if (e.key === 'ArrowLeft') tx += st; else if (e.key === 'ArrowRight') tx -= st; else if (e.key === 'ArrowUp') ty += st; else if (e.key === 'ArrowDown') ty -= st;
+  else if (e.key === '+' || e.key === '=') return zoomAt(1.5, view.clientWidth / 2, view.clientHeight / 2);
+  else if (e.key === '-') return zoomAt(1 / 1.5, view.clientWidth / 2, view.clientHeight / 2);
+  else return;
+  e.preventDefault(); clamp(); apply();
+});
+new ResizeObserver(() => { clamp(); apply(); requestDraw(); }).observe(view);
+refresh(); fit();
+
+// ===== sprite renderer =====
+const objc = document.getElementById('objc'), octx = objc.getContext('2d');
+let ownByOi = null;
+const NEUTRAL = '#b8b8b8';
+fetch('sprites.json').then(r => r.json()).then(j => {
+  SPR = j; let left = 2 * j.pages;
+  const done = () => { if (--left === 0) { prepObjects(); requestDraw(); } };
+  for (let p = 0; p < j.pages; p++) { const a = new Image(); a.onload = done; a.src = 'atlas' + p + '.png'; PAGES.push(a); const f = new Image(); f.onload = done; f.src = 'flag' + p + '.png'; FLAGS.push(f); }
+}).catch(() => {});
+function prepObjects() {
+  for (const o of SPR.objs) { const at = SPR.atlas[SPR.keys[o[3]]]; OBJ[o[2]].push({x: o[0], y: o[1], oi: o[4], cls: o[5], at, left: (o[0] + 1) * 32 - at.w, top: (o[1] + 1) * 32 - at.h}); }
+}
+function requestDraw() { if (drawReq) return; drawReq = true; requestAnimationFrame(() => { drawReq = false; drawObjects(); }); }
+const tmpc = document.createElement('canvas'), tctx = tmpc.getContext('2d');
+function drawSprite(at, left, top, flagColor) {
+  octx.drawImage(PAGES[at.p], at.x, at.y, at.w, at.h, left, top, at.w, at.h);
+  if (at.f && flagColor) {
+    if (tmpc.width < at.w || tmpc.height < at.h) { tmpc.width = Math.max(tmpc.width, at.w); tmpc.height = Math.max(tmpc.height, at.h); }
+    tctx.globalCompositeOperation = 'source-over'; tctx.clearRect(0, 0, at.w, at.h); tctx.drawImage(FLAGS[at.p], at.x, at.y, at.w, at.h, 0, 0, at.w, at.h);
+    tctx.globalCompositeOperation = 'source-in'; tctx.fillStyle = flagColor; tctx.fillRect(0, 0, at.w, at.h);
+    octx.drawImage(tmpc, 0, 0, at.w, at.h, left, top, at.w, at.h);
+  }
+}
+function drawnRect(o, live) {
+  let at = o.at, left = o.left, top = o.top;
+  if (live) { const d = SAVE.defOf[o.oi]; if (d >= 0) { const k = SAVE.tplNames[d]; const a2 = k !== undefined && SPR.atlas[k]; if (a2 && a2 !== at) { at = a2; left = (o.x + 1) * 32 - at.w; top = (o.y + 1) * 32 - at.h; } } }
+  return {at, left, top};
+}
+let OINFO = null; fetch('oinfo.json').then(r => r.json()).then(j => { OINFO = j; }).catch(() => {});
+const PIX = [];
+function pageAlpha(p, x, y) {
+  if (!PIX[p]) { const c = document.createElement('canvas'); c.width = PAGES[p].width; c.height = PAGES[p].height; const cx = c.getContext('2d'); cx.drawImage(PAGES[p], 0, 0); PIX[p] = {d: cx.getImageData(0, 0, c.width, c.height).data, w: c.width}; }
+  return PIX[p].d[4 * (y * PIX[p].w + x) + 3];
+}
+function hitAt(at, left, top, mx, my) { const x = Math.floor(mx - left), y = Math.floor(my - top); return x >= 0 && y >= 0 && x < at.w && y < at.h && pageAlpha(at.p, at.x + x, at.y + y) > 40; }
+function hitTest(mx, my) {
+  if (!SPR || !OBJ[0].length) return null;
+  const z = level === 'ug' ? 1 : 0, game = gameOn();
+  if (game) { const at = SPR.atlas[SPR.keys[SPR.heroDef]]; for (const hr of SAVE.heroes) { if (hr.z !== z || !revealed(hr.x, hr.y, hr.z)) continue; if (hitAt(at, (hr.x + 2) * 32 - at.w, (hr.y + 1) * 32 - at.h, mx, my)) return {hero: hr}; } }
+  const L = OBJ[z];
+  for (let i = L.length - 1; i >= 0; i--) {
+    const o = L[i]; const live = game && revealed(o.x, o.y, z);
+    if (game) { if (o.cls === 34 || o.cls === 70 || o.cls === 26) continue; if (live && !UNTRACK_CLS.has(o.cls) && SAVE.present[o.oi] === 0) continue; }
+    const r = drawnRect(o, live);
+    if (hitAt(r.at, r.left, r.top, mx, my)) return {o, live};
+  }
+  return null;
+}
+const tip = document.getElementById('tip');
+function showTip(h, cx, cy) {
+  let html = '';
+  const sw = p => `<span class="sw" style="background:${p < 8 ? PLCOL[p] : '#999'}"></span>${p < 8 ? PLAYER[p] : 'neutral'}`;
+  if (h.hero) { html = `<div class="tn">${h.hero.name}</div><div class="tt">Hero</div><div class="to">${sw(h.hero.owner)}</div>`; }
+  else {
+    const o = h.o, inf = OINFO ? OINFO[o.oi] : null; let name = inf ? inf.n : 'Object', type = inf && inf.t ? inf.t : '', extra = inf && inf.x ? inf.x : '';
+    const a = artByOi.get(o.oi); if (a) { const ra = resolvedArt(a); if (ra) { name = ra; type = 'was ' + a.label; extra = (DATA.artdesc && DATA.artdesc[resolvedArtId(a)]) || ''; }
+      const aid = a.r === 0 ? a.id : resolvedArtId(a); if (aid >= 0) { showTipHtml(artTipHtml(aid, a.r === 1 ? 'was ' + a.label : '') + `<div class="tt">(${o.x}, ${o.y})</div>`, cx, cy, true); return; } }
+    if (a && a.r === 2 && a.k === "Seer's Hut") { const mk = seerMask(a.oi); if (mk) extra += ` Completed by ${PLAYER.filter((_, p) => mk >> p & 1).join(', ')}.`; }
+    const own = ownByOi && ownByOi.get(o.oi); let ownerLine = '';
+    if (own) { const ow = h.live && SAVE.owner.has(o.oi) ? SAVE.owner.get(o.oi) : own.o; ownerLine = `<div class="to">${sw(ow)}</div>`; }
+    if (o.cls === 54 && h.live) extra += ' (count as placed in the map editor)';
+    const desc = inf && inf.d ? inf.d : '';
+    html = `<div class="tn">${name}</div>${type ? `<div class="tt">${type}</div>` : ''}${extra ? `<div class="tx">${extra}</div>` : ''}${desc ? `<div class="tx td">${desc}</div>` : ''}${ownerLine}<div class="tt">(${o.x}, ${o.y})</div>`;
+  }
+  tip.innerHTML = html; tip.hidden = false;
+  const r = view.getBoundingClientRect(); let x = cx - r.left + 16, y = cy - r.top + 16;
+  if (x + tip.offsetWidth > r.width - 8) x = cx - r.left - tip.offsetWidth - 8; if (y + tip.offsetHeight > r.height - 8) y = cy - r.top - tip.offsetHeight - 8;
+  tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+}
+function iconStyle(id, small) { const c = id % 14, r = Math.floor(id / 14); const u = small ? 22 : 44; return `background-position:-${c * u}px -${r * u}px`; }
+function artTipHtml(id, extraTop) { const name = DATA.artnames[id] || 'Artifact #' + id, desc = (DATA.artdesc && DATA.artdesc[id]) || ''; return `<div class="aic" style="${iconStyle(id)}"></div><div class="tn">${name}</div>${extraTop ? `<div class="tt">${extraTop}</div>` : ''}<div class="tx">${desc.replace(/^\{[^}]*\}\s*/, '')}</div>`; }
+function showTipHtml(html, cx, cy, isArt) {
+  tip.innerHTML = html; tip.classList.toggle('art', !!isArt); tip.hidden = false;
+  const r = view.getBoundingClientRect(); let x = cx - r.left + 16, y = cy - r.top + 16;
+  if (x + tip.offsetWidth > r.width - 8) x = cx - r.left - tip.offsetWidth - 8; if (y + tip.offsetHeight > r.height - 8) y = cy - r.top - tip.offsetHeight - 8;
+  tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+}
+document.addEventListener('pointerdown', e => { if (e.button !== 2) return; const el = e.target.closest('[data-art]'); if (!el) return; e.preventDefault(); showTipHtml(artTipHtml(+el.dataset.art, el.dataset.artwhere || ''), e.clientX, e.clientY, true); tipHold = true; });
+document.addEventListener('contextmenu', e => { if (e.target.closest('[data-art]')) e.preventDefault(); });
+document.addEventListener('pointerup', () => { if (tipHold) { tipHold = false; tip.hidden = true; } });
+function tipAt(cx, cy) { const r = view.getBoundingClientRect(); const h = hitTest((cx - r.left - tx) / s, (cy - r.top - ty) / s); if (h) showTip(h, cx, cy); else tip.hidden = true; }
+function drawObjects() {
+  const w = view.clientWidth, h = view.clientHeight;
+  if (objc.width !== w || objc.height !== h) { objc.width = w; objc.height = h; }
+  octx.setTransform(1, 0, 0, 1, 0, 0); octx.clearRect(0, 0, w, h);
+  if (!SPR || !OBJ[0].length) return;
+  if (!ownByOi) ownByOi = new Map(NAV.own.map(w => [w.oi, w]));
+  octx.setTransform(s, 0, 0, s, tx, ty); octx.imageSmoothingEnabled = s < 1;
+  const z = level === 'ug' ? 1 : 0, game = gameOn();
+  const x0 = -tx / s, y0 = -ty / s, x1 = (w - tx) / s, y1 = (h - ty) / s;
+  for (const o of OBJ[z]) {
+    if (o.left > x1 || o.top > y1 || o.left + o.at.w + 96 < x0 || o.top + o.at.h + 96 < y0) continue;
+    const live = game && revealed(o.x, o.y, z);
+    if (game) { if (o.cls === 34 || o.cls === 70 || o.cls === 26) continue; if (live && !UNTRACK_CLS.has(o.cls) && SAVE.present[o.oi] === 0) continue; }
+    let fc = null;
+    if (o.at.f) { const own = ownByOi.get(o.oi); const ow = live && SAVE.owner.has(o.oi) ? SAVE.owner.get(o.oi) : own ? own.o : 255; fc = ow < 8 ? PLCOL[ow] : NEUTRAL; }
+    const rr = drawnRect(o, live); drawSprite(rr.at, rr.left, rr.top, fc);
+  }
+  if (game) { const at = SPR.atlas[SPR.keys[SPR.heroDef]]; for (const hr of SAVE.heroes) { if (hr.z !== z || !revealed(hr.x, hr.y, hr.z)) continue; drawSprite(at, (hr.x + 2) * 32 - at.w, (hr.y + 1) * 32 - at.h, hr.owner < 8 ? PLCOL[hr.owner] : NEUTRAL); } }
+}
+const UNTRACK_CLS = new Set([26, 34, 70, 8, 36]);
+
+// ===== tabs =====
+const panes = {art: 'pane-art', sk: 'pane-sk', spl: 'pane-spl', cb: 'pane-cb', route: 'pane-route', po: 'pane-po'};
+function showTab(t) { if (!panes[t]) return; for (const k in panes) { document.getElementById(panes[k]).hidden = k !== t; document.getElementById('tab-' + k).setAttribute('aria-selected', k === t); } }
+for (const k in panes) document.getElementById('tab-' + k).addEventListener('click', () => showTab(k));
+
+// ===== nav data =====
+const NAV = DATA.nav, NN = N * N;
+const grid = NAV.grid.map(b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+const COST = [100, 125, 150, 175, 75, 65, 50];
+const idx = (x, y, z) => z * NN + y * N + x;
+const code = i => grid[i >= NN ? 1 : 0][i % NN] & 7, cst = i => COST[(grid[i >= NN ? 1 : 0][i % NN] >> 3) & 7], isWater = i => (grid[i >= NN ? 1 : 0][i % NN] >> 6) & 1;
+const EMBARK = 2500;
+const spAt = new Int32Array(2 * NN).fill(-1);
+NAV.sp.forEach((p, i) => { spAt[idx(p.x, p.y, p.z)] = i; });
+const links = NAV.sp.map(() => []);
+const byKey = {};
+NAV.sp.forEach((p, i) => { const k = p.k === 'monoIn' || p.k === 'monoOut' ? 'm' + p.s : p.k === 'mono2' ? 't' + p.s : p.k; (byKey[k] = byKey[k] || []).push(i); });
+NAV.sp.forEach((p, i) => {
+  if (p.k === 'monoIn') links[i] = (byKey['m' + p.s] || []).filter(j => NAV.sp[j].k === 'monoOut');
+  else if (p.k === 'mono2') links[i] = (byKey['t' + p.s] || []).filter(j => j !== i);
+  else if (p.k === 'whirl') links[i] = (byKey.whirl || []).filter(j => j !== i);
+});
+{ // subterranean gates: greedy nearest pairing across levels
+  const g0 = (byKey.subGate || []).filter(i => NAV.sp[i].z === 0), g1 = (byKey.subGate || []).filter(i => NAV.sp[i].z === 1);
+  const pairs = []; for (const a of g0) for (const b of g1) pairs.push([Math.hypot(NAV.sp[a].x - NAV.sp[b].x, NAV.sp[a].y - NAV.sp[b].y), a, b]);
+  pairs.sort((p, q) => p[0] - q[0]); const used = new Set();
+  for (const [, a, b] of pairs) if (!used.has(a) && !used.has(b)) { used.add(a); used.add(b); links[a] = [b]; links[b] = [a]; }
+}
+const guard = new Int16Array(2 * NN).fill(-1);
+NAV.mon.forEach((mo, i) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = mo.x + dx, y = mo.y + dy; if (x >= 0 && y >= 0 && x < N && y < N) { const t = idx(x, y, mo.z); if (guard[t] < 0) guard[t] = i; } } });
+const KIND = {garrison: 'Garrison', borderGuard: 'Border Guard', borderGate: 'Border Gate', questGuard: 'Quest Guard', questGate: 'Quest Gate', monoIn: 'Monolith entrance', monoOut: 'Monolith exit', mono2: 'Two-way monolith', subGate: 'Subterranean gate', whirl: 'Whirlpool'};
+const PASSTHRU = new Set(['garrison', 'borderGuard', 'borderGate', 'questGuard', 'questGate', 'monoIn', 'mono2', 'subGate', 'whirl', 'monoOut']);
+const keyTent = {}; NAV.keys.forEach(k => { keyTent[k.c] = k; });
+
+// ===== progress (keys + quests) =====
+const PCOL = {'Light Blue': '#6fd3ff', Green: '#3cb050', Red: '#e03c3c', 'Dark Blue': '#2a4fd0', Brown: '#9c6b3c', Purple: '#a050c0', White: '#f2f2f2', Black: '#2b2b2b'};
+const COLORS = Object.keys(PCOL);
+const spKey = p => `${p.z},${p.x},${p.y}`;
+function saveProg() { try { localStorage.setItem('mi-progress2', JSON.stringify(progAll)); localStorage.setItem('mi-player', curPlayer); } catch (e) {} }
+const GUARDS = NAV.sp.map((p, i) => ({...p, i})).filter(p => /Guard|Gate/.test(p.k));
+function qstate(p) {  // auto state of a quest guard for the chosen player: 'done' | 'impossible' | null
+  if (!p.q) return null;
+  if (p.q.startsWith('be player ')) return p.q.slice(10) === PLAYER[curPlayer] ? 'done' : 'impossible';
+  if (p.q.startsWith('be hero ') && SAVE && gameOn()) { const nm = p.q.slice(8); return SAVE.heroes.some(h => h.name === nm && h.owner === curPlayer) ? 'done' : null; }
+  return null;
+}
+const isLocked = p => { if (gone(p.oi)) return false; if (p.k === 'borderGuard' || p.k === 'borderGate') return !prog.keys[p.c]; const a = qstate(p); if (a === 'done') return false; if (a === 'impossible') return true; return !prog.done[spKey(p)]; };
+const gmk = new Map();
+for (const p of GUARDS) {
+  const el = document.createElement('div'); el.className = 'mk gd ' + (p.c && PCOL[p.c] ? 'b' : 'q') + (p.x > N - 10 ? ' flip' : '');
+  if (p.c && PCOL[p.c]) el.style.borderColor = PCOL[p.c];
+  el.style.left = p.x * 32 + 'px'; el.style.top = p.y * 32 + 'px';
+  const sp = document.createElement('span'); sp.textContent = p.c && PCOL[p.c] ? (p.k === 'borderGate' ? 'Gate' : 'Guard') + ' ' + p.c : (p.k === 'questGate' ? 'Q-gate' : 'Quest'); if (p.c && PCOL[p.c]) sp.style.color = PCOL[p.c]; el.appendChild(sp);
+  marks[p.z ? 'ug' : 'ow'].appendChild(el); gmk.set(p.i, el);
+}
+function paintGuards() { for (const p of GUARDS) { const el = gmk.get(p.i); el.hidden = gone(p.oi); el.classList.toggle('open', !isLocked(p)); } }
+const keysEl = document.getElementById('keys');
+for (const c of COLORS) {
+  const n = GUARDS.filter(p => p.c === c).length;
+  const lab = document.createElement('label'); lab.innerHTML = `<input type="checkbox" data-c="${c}"><span class="sw" style="background:${PCOL[c]};border-color:#888"></span>${c} key<span class="kc">${n}</span>`;
+  lab.querySelector('input').addEventListener('change', e => { prog.keys[c] = e.target.checked; saveProg(); paintGuards(); if (start && goal) findRoute(); });
+  keysEl.appendChild(lab);
+}
+function syncKeys() { for (const inp of keysEl.querySelectorAll('input')) inp.checked = !!prog.keys[inp.dataset.c]; }
+const qlist = document.getElementById('qlist'), qq = document.getElementById('qq'), qhide = document.getElementById('q-hide');
+const QUESTS = GUARDS.filter(p => p.k === 'questGuard' || p.k === 'questGate').sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
+function refreshQuests() {
+  const t = qq.value.trim().toLowerCase(); qlist.innerHTML = ''; let n = 0, done = 0;
+  for (const p of QUESTS) {
+    const a = qstate(p); if (a === 'impossible') continue;
+    const g = gone(p.oi) || a === 'done'; const d = g || !!prog.done[spKey(p)]; if (d) done++;
+    const txt = `${p.q} ${p.x} ${p.y} ${p.z ? 'underground' : 'surface'} ${p.k === 'questGate' ? 'gate' : 'guard'}`.toLowerCase();
+    if ((t && !txt.includes(t)) || (qhide.checked && d)) continue; n++;
+    const li = document.createElement('li'); li.className = d ? 'done' : ''; li.dataset.i = p.i;
+    li.innerHTML = `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done"><span class="q">${p.q}</span><span class="m" style="grid-column:2">${p.k === 'questGate' ? 'Quest Gate' : 'Quest Guard'} (${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'}${gone(p.oi) ? ' \u00b7 passed (from save)' : a === 'done' ? ' \u00b7 yours' : ''}</span>`;
+    li.querySelector('input').addEventListener('change', e => { e.stopPropagation(); setDone(p, e.target.checked); });
+    li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (p.z ? 'ug' : 'ow')) setLevel(p.z ? 'ug' : 'ow'); flyTo(p.x, p.y, Math.max(s, 1.2)); gmk.get(p.i).classList.add('active'); setTimeout(() => gmk.get(p.i).classList.remove('active'), 2500); });
+    qlist.appendChild(li);
+  }
+  const total = QUESTS.filter(p => qstate(p) !== 'impossible').length, fromSave = QUESTS.filter(p => gone(p.oi)).length;
+  document.getElementById('qcount').textContent = `${done} done / ${total}` + (fromSave ? ` (${fromSave} from save)` : '') + (QUESTS.length - total ? `, ${QUESTS.length - total} for other players hidden` : '');
+}
+function setDone(p, v) { prog.done[spKey(p)] = v; if (!v) delete prog.done[spKey(p)]; saveProg(); paintGuards(); refreshQuests(); if (start && goal) findRoute(); }
+qq.addEventListener('input', refreshQuests); qhide.addEventListener('change', refreshQuests);
+document.getElementById('q-reset').addEventListener('click', () => { prog = {keys: {}, done: {}}; saveProg(); syncKeys(); paintGuards(); refreshQuests(); });
+document.getElementById('f-gd').addEventListener('change', e => view.classList.toggle('gd-off', !e.target.checked));
+for (const id of ['o-keys', 'o-quests']) document.getElementById(id).addEventListener('change', () => { if (start && goal) findRoute(); });
+syncKeys(); paintGuards(); refreshQuests();
+
+// ===== Dijkstra =====
+class Heap { constructor() { this.k = []; this.v = []; } push(k, v) { const K = this.k, V = this.v; let i = K.length; K.push(k); V.push(v); while (i) { const p = (i - 1) >> 1; if (K[p] <= K[i]) break; [K[p], K[i]] = [K[i], K[p]]; [V[p], V[i]] = [V[i], V[p]]; i = p; } }
+  pop() { const K = this.k, V = this.v, k = K[0], v = V[0], lk = K.pop(), lv = V.pop(); if (K.length) { K[0] = lk; V[0] = lv; let i = 0; for (;;) { let l = 2 * i + 1, r = l + 1, m = i; if (l < K.length && K[l] < K[m]) m = l; if (r < K.length && K[r] < K[m]) m = r; if (m === i) break; [K[m], K[i]] = [K[i], K[m]]; [V[m], V[i]] = [V[i], V[m]]; i = m; } } return [k, v]; } get size() { return this.k.length; } }
+function route(s, g, opt) {
+  const dist = new Float64Array(2 * NN).fill(Infinity), prev = new Int32Array(2 * NN).fill(-1), via = new Int8Array(2 * NN);
+  const h = new Heap(); dist[s] = 0; h.push(0, s);
+  const enter = (t, isGoal) => { const c = code(t); if (c === 1 || c === 4) return false; if (c === 2) return opt.boat;
+    const si = spAt[t]; if (si >= 0) { const p = NAV.sp[si]; if (!gone(p.oi)) { if (opt.keys && (p.k === 'borderGuard' || p.k === 'borderGate') && !prog.keys[p.c]) return isGoal; if (opt.quests && (p.k === 'questGuard' || p.k === 'questGate') && isLocked(p)) return isGoal; } }
+    return true; };
+  const pen = t => { let p = 0; if (opt.mon && ((guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)) || (code(t) === 6 && guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)))) p += 4000; const si = spAt[t]; if (opt.gate && si >= 0 && /Guard|Gate|garrison/.test(NAV.sp[si].k)) p += 6000; return p; };
+  while (h.size) {
+    const [d, u] = h.pop(); if (d > dist[u]) continue; if (u === g) break;
+    const z = u >= NN ? 1 : 0, r = u % NN, ux = r % N, uy = (r - ux) / N, uw = isWater(u);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue; const x = ux + dx, y = uy + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue;
+      const t = idx(x, y, z); if (!enter(t, t === g)) continue;
+      const nd = d + cst(t) * (dx && dy ? 1.41421 : 1) + pen(t) + (isWater(t) !== uw ? EMBARK : 0);
+      if (nd < dist[t]) { dist[t] = nd; prev[t] = u; via[t] = 0; h.push(nd, t); }
+    }
+    const si = spAt[u];
+    if (si >= 0) for (const j of links[si]) { const t = idx(NAV.sp[j].x, NAV.sp[j].y, NAV.sp[j].z); const nd = d + 100 + pen(t); if (nd < dist[t]) { dist[t] = nd; prev[t] = u; via[t] = 1; h.push(nd, t); } }
+  }
+  if (dist[g] === Infinity) return null;
+  const path = []; for (let u = g; u !== -1; u = prev[u]) path.push(u); path.reverse();
+  let cost = 0; for (const t of path.slice(1)) { cost += dist[t] - dist[prev[t]] - pen(t); }
+  return {path, via, cost, dist: dist[g]};
+}
+const tileOf = i => ({z: i >= NN ? 1 : 0, x: (i % NN) % N, y: Math.floor((i % NN) / N)});
+function snap(p, boat) { // nearest enterable tile
+  let best = null;
+  for (let r = 0; r <= 3 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r; dx++) {
+    const x = p.x + dx, y = p.y + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue; const t = idx(x, y, p.z), c = code(t);
+    if (c === 0 || c === 3 || c === 5 || (c === 2 && boat)) { best = t; break; }
+  }
+  return best;
+}
+
+// ===== route UI =====
+let start = null, goal = null, pick = null, lastRoute = null;
+const rsvg = document.getElementById('route-svg'), lsvg = document.getElementById('link-svg');
+rsvg.setAttribute('width', PX); rsvg.setAttribute('height', PX); lsvg.setAttribute('width', PX); lsvg.setAttribute('height', PX);
+const ptA = document.getElementById('pt-a'), ptB = document.getElementById('pt-b');
+function placePt(el, p) { el.hidden = !p || (p.z ? 'ug' : 'ow') !== level; if (p) { el.style.left = p.x * 32 + 'px'; el.style.top = p.y * 32 + 'px'; } }
+function describe(p) { return p ? `${p.name ? p.name + ' ' : ''}(${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'}` : 'not set'; }
+function setStart(p) { start = p; document.getElementById('r-start').textContent = describe(p); placePt(ptA, p); showTab('route'); if (goal) findRoute(); }
+function setGoal(p) { goal = p; document.getElementById('r-goal').textContent = describe(p); placePt(ptB, p); showTab('route'); if (start) findRoute(); else flyTo(p.x, p.y, Math.max(s, 1)); }
+document.getElementById('b-start').addEventListener('click', e => { pick = pick === 'start' ? null : 'start'; e.target.classList.toggle('on', pick === 'start'); document.getElementById('b-goal').classList.remove('on'); view.classList.toggle('pick', !!pick); });
+document.getElementById('b-goal').addEventListener('click', e => { pick = pick === 'goal' ? null : 'goal'; e.target.classList.toggle('on', pick === 'goal'); document.getElementById('b-start').classList.remove('on'); view.classList.toggle('pick', !!pick); });
+document.getElementById('b-swap').addEventListener('click', () => { const t = start; setStart(goal); setGoal(t); });
+document.getElementById('b-clear').addEventListener('click', () => { start = goal = null; lastRoute = null; placePt(ptA, null); placePt(ptB, null); rsvg.innerHTML = ''; document.getElementById('r-start').textContent = document.getElementById('r-goal').textContent = 'not set'; document.getElementById('r-res').hidden = true; });
+document.getElementById('b-go').addEventListener('click', findRoute);
+for (const id of ['o-mon', 'o-gate', 'o-boat']) document.getElementById(id).addEventListener('change', () => { if (start && goal) findRoute(); });
+const towns = NAV.towns.slice().sort((a, b) => a.n.localeCompare(b.n));
+for (const sid of ['town-start', 'town-goal']) { const sel = document.getElementById(sid); towns.forEach((t, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `${t.n} (${t.f}, ${t.o}) ${t.x},${t.y} ${t.z ? 'UG' : ''}`; sel.appendChild(o); });
+  sel.addEventListener('change', () => { if (sel.value === '') return; const t = towns[+sel.value]; const p = {x: t.x, y: t.y, z: t.z, name: t.n}; sid === 'town-start' ? setStart(p) : setGoal(p); sel.value = ''; }); }
+function findRoute() {
+  if (!start || !goal) return;
+  const opt = {mon: document.getElementById('o-mon').checked, gate: document.getElementById('o-gate').checked, boat: document.getElementById('o-boat').checked, keys: document.getElementById('o-keys').checked, quests: document.getElementById('o-quests').checked};
+  const si = snap(start, opt.boat), gi = snap(goal, opt.boat), res = document.getElementById('r-res'); res.hidden = false;
+  if (si === null || gi === null) { res.innerHTML = '<span>Start or goal is on an impassable tile.</span>'; return; }
+  const r = route(si, gi, opt); lastRoute = r; drawRoute();
+  if (!r) { res.innerHTML = '<span>No route found' + (opt.boat ? '' : ' on foot. Try allowing water (boat)') + ((opt.keys || opt.quests) ? ', or untick the key / quest routing options in Progress.' : '.') + '</span>'; return; }
+  const notes = []; const seenMon = new Set(), seenSp = new Set(); let water = 0, crossings = 0, portalsUsed = 0;
+  r.path.forEach((t, i) => {
+    if (!i) return;
+    const p = tileOf(t), c = code(t);
+    if (isWater(t)) water++;
+    if (!r.via[t] && isWater(t) !== isWater(r.path[i - 1])) { crossings++; notes.push({k: 'water', t: `${isWater(t) ? 'Embark' : 'Disembark'} at (${p.x}, ${p.y}) ${p.z ? 'UG' : 'S'} (+${EMBARK} MP)`}); }
+    if (r.via[t]) { portalsUsed++; const sp = NAV.sp[spAt[t]], from = tileOf(r.path[i - 1]), fsp = NAV.sp[spAt[r.path[i - 1]]]; notes.push({k: 'portal', t: `${KIND[fsp.k]}${fsp.c ? ' ' + fsp.c : ''} at (${from.x}, ${from.y}) ${from.z ? 'UG' : 'S'} \u2192 (${p.x}, ${p.y}) ${p.z ? 'UG' : 'S'}`}); }
+    const sj = spAt[t];
+    if (sj >= 0 && !seenSp.has(sj) && !r.via[t] && !gone(NAV.sp[sj].oi)) { seenSp.add(sj); const sp = NAV.sp[sj];
+      if (sp.k === 'garrison') { const so = SAVE && gameOn() && revealedOi(sp.oi) ? SAVE.owner.get(sp.oi) : undefined; notes.push({k: 'gate', t: `Garrison at (${p.x}, ${p.y}): ${so !== undefined ? (so < 8 ? PLAYER[so] : 'neutral') + ' (from save)' : sp.o}, ${sp.a}`}); }
+      else if (sp.k === 'borderGuard' || sp.k === 'borderGate') { const kt = keyTent[sp.c]; notes.push({k: 'gate', t: `${KIND[sp.k]} ${sp.c} at (${p.x}, ${p.y})` + (prog.keys[sp.c] ? ' (you hold the key)' : `, key from Keymaster's Tent ${kt ? `at (${kt.x}, ${kt.y}) ${kt.z ? 'UG' : 'S'}` : '(none on map)'}`)}); }
+      else if (sp.k === 'questGuard' || sp.k === 'questGate') notes.push({k: 'gate', t: `${KIND[sp.k]} at (${p.x}, ${p.y}): ${sp.q}` + (!isLocked(sp) ? ' (done)' : '')}); }
+    const gm = guard[t]; if (gm >= 0 && !gone(NAV.mon[gm].oi) && !seenMon.has(gm) && t !== si) { seenMon.add(gm); const mo = NAV.mon[gm]; notes.push({k: 'fight', t: `Fight ${mo.n} at (${mo.x}, ${mo.y})`}); }
+  });
+  const days = r.cost / 1500;
+  res.innerHTML = `<span class="big">${Math.round(r.cost)} MP</span><span>${r.path.length - 1} tiles, about ${days.toFixed(1)} days at 1500 MP/day${water ? `, ${water} water tiles, ${crossings} embark/disembark` : ''}${portalsUsed ? `, ${portalsUsed} teleport${portalsUsed > 1 ? 's' : ''}` : ''}. ${seenMon.size} fight${seenMon.size === 1 ? '' : 's'}, ${seenSp.size} gate/guard${seenSp.size === 1 ? '' : 's'}.</span>` + (notes.length ? '<ol>' + notes.map(n => `<li class="${n.k}">${n.t}</li>`).join('') + '</ol>' : '<span>Clear path, nothing in the way.</span>');
+  const p0 = tileOf(si); if ((p0.z ? 'ug' : 'ow') !== level) setLevel(p0.z ? 'ug' : 'ow');
+  const xs = r.path.filter(t => (t >= NN ? 1 : 0) === p0.z).map(tileOf); fitTo(xs);
+}
+function fitTo(pts) {
+  const minx = Math.min(...pts.map(p => p.x)), maxx = Math.max(...pts.map(p => p.x)), miny = Math.min(...pts.map(p => p.y)), maxy = Math.max(...pts.map(p => p.y));
+  const w = view.clientWidth, h = view.clientHeight, ns = Math.min(4, Math.max(0.15, Math.min(w / ((maxx - minx + 8) * 32), h / ((maxy - miny + 8) * 32))));
+  flyTo((minx + maxx) / 2, (miny + maxy) / 2, ns);
+}
+function drawRoute() {
+  rsvg.innerHTML = ''; if (!lastRoute) return;
+  const z = level === 'ug' ? 1 : 0; let seg = [], out = '';
+  const flush = () => { if (seg.length > 1) out += `<polyline points="${seg.join(' ')}" fill="none" stroke="#000" stroke-width="9" stroke-opacity=".55" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${seg.join(' ')}" fill="none" stroke="#7CFF8A" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>`; seg = []; };
+  lastRoute.path.forEach((t, i) => { const p = tileOf(t); if (p.z !== z || (i && lastRoute.via[t])) { flush(); } if (p.z === z) seg.push(`${p.x * 32 + 16},${p.y * 32 + 16}`); });
+  flush(); rsvg.innerHTML = out;
+}
+
+// ===== skills / spells UI =====
+const SKILLS = DATA.skills.map((e, i) => ({...e, i, cat: (e.k === 'Shrine' || (e.k === 'Scholar' && e.n.startsWith('spell: '))) ? 'spl' : 'sk'}));
+const skmk = new Map();
+for (const e of SKILLS) {
+  const el = document.createElement('div'); el.className = 'mk ' + e.cat + (e.x > N - 12 ? ' flip' : ''); el.style.left = e.x * 32 + 'px'; el.style.top = e.y * 32 + 'px';
+  const sp = document.createElement('span'); const it = document.createElement('i'); it.textContent = e.k + ': '; sp.appendChild(it); sp.appendChild(document.createTextNode(e.n.replace(/^spell: /, ''))); el.appendChild(sp);
+  marks[e.z ? 'ug' : 'ow'].appendChild(el); skmk.set(e.i, el);
+}
+let selSk = null;
+function buildSkillList(cat, listId, qId, countId) {
+  const list = document.getElementById(listId), q = document.getElementById(qId);
+  const t = q.value.trim().toLowerCase(); const kinds = new Set([...document.querySelectorAll(`.skf[data-cat="${cat}"]:checked`)].map(i => i.value));
+  list.innerHTML = ''; let n = 0, total = 0;
+  const sorted = SKILLS.filter(e => e.cat === cat).sort((a, b) => a.n.localeCompare(b.n) || a.k.localeCompare(b.k) || a.z - b.z || a.y - b.y);
+  for (const e of sorted) {
+    total++; const kind = e.k === 'Seafaring Academy' ? 'University' : e.k; const nm = e.n.replace(/^spell: /, '');
+    const ok = kinds.has(kind) && (!t || `${nm} ${e.v} ${e.k} ${LV[e.z ? 'ug' : 'ow']}`.toLowerCase().includes(t));
+    skmk.get(e.i).hidden = !ok; if (!ok) continue; n++;
+    const li = document.createElement('li'); li.dataset.i = e.i; li.tabIndex = 0; li.className = (selSk === e.i ? 'sel' : '') + (gone(e.oi) ? ' gone' : '');
+    li.innerHTML = `<span class="n">${nm}</span><button class="go" title="Route to this">&rarr;</button><span class="m"><span class="lv">${e.k}</span><span>${LV[e.z ? 'ug' : 'ow']} ${e.x}, ${e.y}</span>${e.v ? `<span>${e.v}</span>` : ''}</span>`;
+    li.querySelector('.go').addEventListener('click', ev => { ev.stopPropagation(); setGoal({x: e.x, y: e.y, z: e.z, name: e.k + ' ' + nm}); });
+    li.addEventListener('click', () => { if (selSk !== null) skmk.get(selSk).classList.remove('active'); selSk = e.i; skmk.get(e.i).classList.add('active'); if (level !== (e.z ? 'ug' : 'ow')) setLevel(e.z ? 'ug' : 'ow'); flyTo(e.x, e.y, Math.max(s, 1.5)); for (const l of list.children) l.classList.toggle('sel', +l.dataset.i === e.i); document.getElementById('s-sel').innerHTML = `<b>${e.k}: ${nm}</b> at (${e.x}, ${e.y}) ${LV[e.z ? 'ug' : 'ow']}`; });
+    list.appendChild(li);
+  }
+  document.getElementById(countId).textContent = n + ' / ' + total;
+}
+function refreshSkills() { buildSkillList('sk', 'sklist', 'skq', 'skcount'); buildSkillList('spl', 'spllist', 'splq', 'splcount'); }
+document.getElementById('skq').addEventListener('input', refreshSkills); document.getElementById('splq').addEventListener('input', refreshSkills);
+for (const i of document.querySelectorAll('.skf')) i.addEventListener('change', refreshSkills);
+document.getElementById('sk-show').addEventListener('change', e => view.classList.toggle('sk-off', !e.target.checked));
+document.getElementById('spl-show').addEventListener('change', e => view.classList.toggle('spl-off', !e.target.checked));
+refreshSkills();
+
+// ===== sources of an artifact + small action menu =====
+function goTo(x, y, z) { if (level !== (z ? 'ug' : 'ow')) setLevel(z ? 'ug' : 'ow'); flyTo(x, y, Math.max(s, 1.5)); }
+function sourcesFor(name) {
+  const out = [];
+  for (const a of arts) {
+    if (gone(a.oi) || seerDone(a)) continue;
+    if (a.r === 0 && a.n === name) out.push({a, kind: 'on the ground', detail: ''});
+    else if (a.r === 1 && resolvedArt(a) === name) out.push({a, kind: 'on the ground', detail: 'was ' + a.label});
+    else if (a.r === 2 && a.n.split(', ').includes(name)) out.push({a, kind: a.k, detail: a.v});
+  }
+  return out;
+}
+const menu = document.getElementById('menu');
+function openMenu(items, cx, cy) {
+  menu.innerHTML = '';
+  for (const it of items) {
+    if (it.header) { const h = document.createElement('div'); h.className = 'mh'; h.textContent = it.header; menu.appendChild(h); continue; }
+    const d = document.createElement('div'); d.className = 'mi' + (it.sep ? ' sep' : ''); d.innerHTML = `<span class="ml"><span>${it.label}</span>${it.route ? '<button class="mr" title="Set as route goal">route</button>' : ''}</span>${it.sub ? `<span class="w">${it.sub}</span>` : ''}`;
+    d.addEventListener('click', () => { if (!it.keep) menu.hidden = true; it.run(); });
+    const rb = d.querySelector('.mr'); if (rb) rb.addEventListener('click', e => { e.stopPropagation(); menu.hidden = true; it.route(); });
+    menu.appendChild(d);
+  }
+  menu.hidden = false;
+  let x = cx + 4, y = cy + 4; if (x + menu.offsetWidth > innerWidth - 8) x = innerWidth - menu.offsetWidth - 8; if (y + menu.offsetHeight > innerHeight - 8) y = cy - menu.offsetHeight - 4;
+  menu.style.left = Math.max(4, x) + 'px'; menu.style.top = Math.max(4, y) + 'px';
+}
+document.addEventListener('pointerdown', e => { if (!menu.hidden && !e.target.closest('#menu')) menu.hidden = true; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') menu.hidden = true; });
+const srcLabel = sc => `(${sc.a.x}, ${sc.a.y}) ${LV[sc.a.lv]} · ${sc.kind}`;
+function goMenuFor(a, cx, cy) {
+  const name = a.r === 0 ? a.n : (resolvedArt(a) || null);
+  const items = [
+    {label: 'Route to here', sub: `(${a.x}, ${a.y}) ${LV[a.lv]}`, run: () => { setGoal({x: a.x, y: a.y, z: a.z, name: labelOf(a)}); goTo(a.x, a.y, a.z); }},
+    {label: 'Start route here', run: () => setStart({x: a.x, y: a.y, z: a.z, name: labelOf(a)})},
+    {label: 'Zoom to it', run: () => select(a)},
+  ];
+  if (name) {
+    const others = sourcesFor(name).filter(sc => sc.a !== a);
+    if (others.length) { items.push({header: `Other sources of ${name}`}); for (const sc of others.slice(0, 12)) items.push({label: srcLabel(sc), sub: sc.detail, keep: true, run: () => goTo(sc.a.x, sc.a.y, sc.a.z), route: () => setGoal({x: sc.a.x, y: sc.a.y, z: sc.a.z, name: name})}); }
+  }
+  openMenu(items, cx, cy);
+}
+
+// ===== combination artifacts =====
+function refreshCombos() {
+  const box = document.getElementById('cblist');
+  if (!SAVE) { box.innerHTML = '<p class="hint2">Load a save to see which combination artifacts you can assemble.</p>'; return; }
+  const mine = SAVE.heroArts.filter(h => h.owner === curPlayer);
+  const holders = new Map(); for (const h of mine) for (const a of h.arts) { if (!holders.has(a)) holders.set(a, []); holders.get(a).push(h.name); }
+  let html = `<p class="hint2">${PLAYER[curPlayer]}: ${mine.length} heroes, ${[...holders.values()].reduce((n, v) => n + v.length, 0)} artifacts carried.</p>`;
+  const blocks = DATA.combos.map(c => {
+    const parts = c.parts.map(p => ({id: p, name: DATA.artnames[p], have: holders.get(p) || [], spots: sourcesFor(DATA.artnames[p])}));
+    const n = parts.filter(p => p.have.length).length; return {c, parts, n, ok: n === parts.length};
+  }).sort((a, b) => (b.ok - a.ok) || (b.n / b.parts.length - a.n / a.parts.length));
+  for (const b of blocks) {
+    html += `<div class="cb${b.ok ? ' ok' : ''}"><h3><span class="ttl" data-art="${b.c.id}"><span class="aic s" style="${iconStyle(b.c.id, true)}"></span>${DATA.artnames[b.c.id]}</span><span class="st">${b.ok ? 'can assemble' : b.n + ' / ' + b.parts.length + ' parts'}</span></h3>`;
+    for (const p of b.parts) {
+      const where = p.have.length ? 'carried by ' + p.have.join(', ') : p.spots.length ? p.spots.slice(0, 4).map(sc => `<span class="src" data-x="${sc.a.x}" data-y="${sc.a.y}" data-z="${sc.a.z}" title="Show on map">${srcLabel(sc)}${sc.detail ? ': ' + sc.detail : ''}</span>`).join('<br>') + (p.spots.length > 4 ? `<br>+${p.spots.length - 4} more` : '') : 'no source on the map';
+      html += `<div class="part${p.have.length ? ' have' : ''}" data-art="${p.id}" data-artwhere="${(p.have.length ? 'carried by ' + p.have.join(', ') : '').replace(/"/g, '')}"><span class="dot"></span><span class="aic s" style="${iconStyle(p.id, true)}"></span><span>${p.name}<br><span class="w">${where}</span></span>${!p.have.length && p.spots.length ? `<button class="go" data-n="${p.name}" title="Pick a source to route to">&rarr;</button>` : ''}</div>`;
+    }
+    html += '</div>';
+  }
+  if (holders.size) html += `<details><summary class="hint2">All artifacts carried by ${PLAYER[curPlayer]}</summary><div class="hint2">${[...holders.entries()].map(([a, hs]) => `${DATA.artnames[a] || 'Artifact #' + a} (${hs.join(', ')})`).sort().join('<br>')}</div></details>`;
+  box.innerHTML = html;
+  for (const btn of box.querySelectorAll('.go')) btn.addEventListener('click', e => { const name = btn.dataset.n; const items = [{header: name}]; for (const sc of sourcesFor(name).slice(0, 14)) items.push({label: srcLabel(sc), sub: sc.detail, keep: true, run: () => goTo(sc.a.x, sc.a.y, sc.a.z), route: () => setGoal({x: sc.a.x, y: sc.a.y, z: sc.a.z, name})}); openMenu(items, e.clientX, e.clientY); });
+  for (const sp of box.querySelectorAll('.src')) sp.addEventListener('click', e => { e.stopPropagation(); goTo(+sp.dataset.x, +sp.dataset.y, +sp.dataset.z); });
+}
+
+// ===== portals UI =====
+const plist = document.getElementById('plist'), pq = document.getElementById('pq');
+const PORTAL = NAV.sp.map((p, i) => ({...p, i})).filter(p => /mono|subGate|whirl/.test(p.k));
+const pmk = new Map();
+for (const p of PORTAL) {
+  const el = document.createElement('div'); el.className = 'mk ' + (p.k === 'subGate' ? 'sg' : p.k === 'whirl' ? 'wh' : 'po') + (p.x > N - 12 ? ' flip' : '');
+  el.style.left = p.x * 32 + 'px'; el.style.top = p.y * 32 + 'px';
+  const sp = document.createElement('span'); sp.textContent = p.k === 'subGate' ? 'Gate' : p.k === 'whirl' ? 'Whirlpool' : (p.k === 'monoIn' ? '\u2192 ' : p.k === 'monoOut' ? '\u2190 ' : '\u21c4 ') + 'ch ' + p.s; el.appendChild(sp);
+  marks[p.z ? 'ug' : 'ow'].appendChild(el); pmk.set(p.i, el);
+}
+let selP = null;
+function selectPortal(i) {
+  if (selP !== null) { pmk.get(selP).classList.remove('active'); for (const j of links[selP]) pmk.get(j).classList.remove('link'); }
+  selP = i; const p = NAV.sp[i]; pmk.get(i).classList.add('active');
+  for (const j of links[i]) pmk.get(j).classList.add('link');
+  if (level !== (p.z ? 'ug' : 'ow')) setLevel(p.z ? 'ug' : 'ow');
+  drawLinks();
+  const dests = links[i].map(j => NAV.sp[j]);
+  document.getElementById('s-sel').innerHTML = `<b>${KIND[p.k]}${p.c ? ' ' + p.c : ''}</b> at (${p.x}, ${p.y}) \u2192 ` + (dests.length ? dests.map(d => `(${d.x}, ${d.y}) ${d.z ? 'UG' : 'S'}`).join(', ') : 'no exit');
+  for (const li of plist.children) li.classList.toggle('sel', +li.dataset.i === i);
+  flyTo(p.x, p.y, Math.max(s, 0.8));
+}
+function drawLinks() {
+  lsvg.innerHTML = ''; if (selP === null) return; const p = NAV.sp[selP], z = level === 'ug' ? 1 : 0; let out = '';
+  for (const j of links[selP]) { const d = NAV.sp[j]; if (p.z === z && d.z === z) out += `<line x1="${p.x * 32 + 16}" y1="${p.y * 32 + 16}" x2="${d.x * 32 + 16}" y2="${d.y * 32 + 16}" stroke="#f06ad8" stroke-width="4" stroke-dasharray="14 10" stroke-opacity=".9"/>`; }
+  lsvg.innerHTML = out;
+}
+function refreshPortals() {
+  const t = pq.value.trim().toLowerCase(); plist.innerHTML = ''; let n = 0;
+  const sorted = PORTAL.slice().sort((a, b) => (a.k + (a.s || 0)).localeCompare(b.k + (b.s || 0)) || a.z - b.z || a.y - b.y);
+  for (const p of sorted) {
+    const txt = `${KIND[p.k]} ${p.c || ''} ${p.z ? 'underground' : 'surface'}`.toLowerCase(); if (t && !txt.includes(t)) continue; n++;
+    const li = document.createElement('li'); li.dataset.i = p.i; li.tabIndex = 0; const dests = links[p.i];
+    li.innerHTML = `<span class="n">${KIND[p.k]}${p.c ? ' \u00b7 ' + p.c : ''}</span><span class="m">(${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'} \u2192 ${dests.length ? dests.map(j => `(${NAV.sp[j].x}, ${NAV.sp[j].y})${NAV.sp[j].z !== p.z ? (NAV.sp[j].z ? ' UG' : ' S') : ''}`).join(', ') : 'no exit'}</span>`;
+    li.addEventListener('click', () => selectPortal(p.i)); li.addEventListener('keydown', e => { if (e.key === 'Enter') selectPortal(p.i); });
+    plist.appendChild(li);
+  }
+  document.getElementById('pcount').textContent = n + ' / ' + PORTAL.length;
+}
+pq.addEventListener('input', refreshPortals); refreshPortals();
+document.getElementById('f-po').addEventListener('change', e => view.classList.toggle('po-off', !e.target.checked));
+
+// ===== savegame (Game mode) =====
+function gameOn() { return !!SAVE && document.getElementById('g-mode').checked; }
+function hideGone() { return gameOn() && document.getElementById('g-hide').checked; }
+const UNTRACK = new Set(DATA.arts.filter(a => a.r === 2 && (a.k === 'Event' || a.k === 'Hero')).map(a => a.oi));
+function revealed(x, y, z) { return !SAVE || !SAVE.fog || ((SAVE.fog[z * NN + y * N + x] >> curPlayer) & 1) === 1; }
+function revealedOi(oi) { return revealed(OPOS[3 * oi], OPOS[3 * oi + 1], OPOS[3 * oi + 2]); }
+function gone(oi) { return !!SAVE && gameOn() && oi !== undefined && !UNTRACK.has(oi) && SAVE.present[oi] === 0 && revealedOi(oi); }
+function seerMask(oi) { return SAVE && gameOn() && SAVE.seer.has(oi) && revealedOi(oi) ? SAVE.seer.get(oi) : 0; }
+function myPlayer() { return curPlayer; }
+function resolvedArt(a) {  // actual artifact behind a random one, from the save (revealed tiles only)
+  if (a.r !== 1 || !SAVE || !gameOn() || !revealedOi(a.oi)) return null;
+  const d = SAVE.defOf[a.oi]; if (d < 0) return null; const k = SAVE.tplNames[d] || ''; const m = /^ava(\d{4})\.def$/.exec(k); if (!m) return null;
+  let id = +m[1]; if (id >= 142 && id <= 144) id -= 1; return DATA.artnames[id] || null;
+}
+function resolvedArtId(a) { if (a.r !== 1 || !SAVE || !gameOn() || !revealedOi(a.oi)) return -1; const d = SAVE.defOf[a.oi]; if (d < 0) return -1; const m = /^ava(\d{4})\.def$/.exec(SAVE.tplNames[d] || ''); if (!m) return -1; let id = +m[1]; if (id >= 142 && id <= 144) id -= 1; return id; }
+function labelOf(a) { const r = resolvedArt(a); return r ? r : a.label; }
+function seerDone(a) { return a.k === "Seer's Hut" && !!(seerMask(a.oi) >> myPlayer() & 1); }
+const TILE0 = Uint8Array.from(atob(DATA.tile0), c => c.charCodeAt(0));
+function parseSave(buf) {
+  const gz = new Uint8Array(buf);
+  if (gz[0] !== 0x1f || gz[1] !== 0x8b) throw new Error('Not a gzip file (expected a HotA .GM1 save).');
+  let hl = 10; const flg = gz[3];
+  if (flg & 4) hl += 2 + (gz[hl] | gz[hl + 1] << 8);
+  if (flg & 8) { while (gz[hl]) hl++; hl++; }
+  if (flg & 16) { while (gz[hl]) hl++; hl++; }
+  if (flg & 2) hl += 2;
+  const raw = pako.inflate(gz.subarray(hl), {raw: true});
+  if (String.fromCharCode(...raw.subarray(0, 5)) !== 'H3SVG') throw new Error('Not a Heroes 3 scenario save.');
+  const dv = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const u16 = o => dv.getUint16(o, true), u32 = o => dv.getUint32(o, true);
+  const NT = 2 * NN;
+  // tiles: find start by matching first 6 bytes of first tiles, walking variable records
+  const t6 = (i, s) => { for (let k = 0; k < 6; k++) if (raw[s + k] !== TILE0[6 * i + k]) return false; return true; };
+  let ms = -1;
+  for (let s = 0; s < raw.length - 20000; s++) {
+    if (!t6(0, s)) continue;
+    let q = s, ok = true;
+    for (let i = 0; i < 600; i++) { if (!t6(i, q)) { ok = false; break; } q += 22 + 4 * u32(q + 18); }
+    if (ok) { ms = s; break; }
+  }
+  if (ms < 0) throw new Error('Map tiles not found in save. Is this a save of The Mysterious Island?');
+  const presentSave = new Uint8Array(70000), heroTiles = [];
+  let q = ms;
+  for (let i = 0; i < NT; i++) {
+    const cls = u16(q + 8);
+    if (cls === 34) heroTiles.push({id: u32(q + 14), x: (i % NN) % N, y: Math.floor((i % NN) / N), z: i >= NN ? 1 : 0});
+    const n = u32(q + 18);
+    for (let k = 0; k < n; k++) presentSave[u16(q + 22 + 4 * k)] = 1;
+    q += 22 + 4 * n;
+  }
+  const tilesEnd = q;
+  // templates then object list; align save object order with the map (save inserts new objects)
+  const ntpl = u32(q); q += 4; const tplNames = [];
+  for (let i = 0; i < ntpl; i++) { const L = u16(q); let nm = ''; for (let k = 0; k < L; k++) nm += String.fromCharCode(raw[q + 2 + k]); tplNames.push(nm.toLowerCase()); q += 2 + L + 33; }
+  const nobjSave = u32(q); q += 4; const objList = q; q += 5 * nobjSave;
+  const objEnd = q;
+  const present = new Uint8Array(DATA.nobj), defOf = new Int32Array(DATA.nobj).fill(-1);
+  { let j = 0;
+    for (let i = 0; i < nobjSave; i++) {
+      const o = objList + 5 * i;
+      if (j < DATA.nobj && raw[o] === OPOS[3 * j] && raw[o + 1] === OPOS[3 * j + 1] && raw[o + 2] === OPOS[3 * j + 2]) { if (presentSave[i]) present[j] = 1; defOf[j] = u16(o + 3); j++; }
+    }
+    if (j < DATA.nobj - 50) throw new Error('Object list does not match the map (aligned ' + j + ' of ' + DATA.nobj + ').');
+  }
+  // owner arrays: [u32 mines][mines x62][u16 dwellings][dwellings x75][u8 garrisons][garrisons x61]
+  const C = NAV.counts; let chain = -1;
+  for (let b = objEnd; b < raw.length - 100000; b++) {
+    if (u32(b) === C.mine && u16(b + 4 + C.mine * 62) === C.dwelling && raw[b + 6 + C.mine * 62 + C.dwelling * 75] === C.garrison) { chain = b; break; }
+  }
+  const owner = new Map();
+  if (chain >= 0) {
+    const mb = chain + 4, db = mb + C.mine * 62 + 2, gb = db + C.dwelling * 75 + 1, ge = gb + C.garrison * 61;
+    for (const w of NAV.own) {
+      if (w.k === 'mine') owner.set(w.oi, raw[mb + w.ri * 62]);
+      else if (w.k === 'dwelling') owner.set(w.oi, raw[db + w.ri * 75]);
+      else if (w.k === 'garrison') owner.set(w.oi, raw[gb + w.ri * 61]);
+      else if (w.k === 'town') { const nm = cp1251(w.n); const p = findBytes(raw, [nm.length & 255, nm.length >> 8, ...nm], ge, ge + 400000); if (p >= 0) owner.set(w.oi, raw[p - 69]); }
+    }
+  }
+  // seer huts: anchor each record by its first quest text, state byte sits before the 4-byte id and a long zero tail
+  const seer = new Map();
+  { let p = objEnd; const found = [];
+    for (const sr of NAV.seers) {
+      if (!sr.tl) { found.push(-1); continue; }
+      const t = Uint8Array.from(atob(sr.t), c => c.charCodeAt(0));
+      const pat = [sr.tl & 255, (sr.tl >> 8) & 255, (sr.tl >> 16) & 255, 0, ...t];
+      const h = findBytes(raw, pat, p, chain > 0 ? chain : raw.length); found.push(h); if (h >= 0) p = h + 4;
+    }
+    for (let k = 0; k < NAV.seers.length; k++) {
+      const h = found[k]; if (h < 0) continue;
+      let nx = -1; for (let j = k + 1; j < found.length; j++) if (found[j] >= 0) { nx = found[j]; break; }
+      const lim = nx > 0 ? nx : Math.min(raw.length, h + 4 + NAV.seers[k].tl + 3000);
+      let i = lim - 1, best = -1;
+      while (i > h + NAV.seers[k].tl) { if (raw[i] !== 0) { i--; continue; } let s0 = i; while (s0 > h && raw[s0 - 1] === 0) s0--; if (i - s0 + 1 >= 30) { best = s0; break; } i = s0 - 1; }
+      if (best > 0) seer.set(NAV.seers[k].oi, raw[best - 2]);
+    }
+  }
+  // heroes: owner/name records
+  const hinfo = {};
+  for (let t = tilesEnd; t < raw.length - 200; t++) {
+    if (raw[t + 1] !== 255 || raw[t + 5] !== 255 || raw[t + 6] !== 255 || raw[t + 7] !== 255 || raw[t + 8] !== 0 || raw[t + 9] !== 255) continue;
+    const o = raw[t]; if (o > 7 && o !== 255) continue;
+    const id = raw[t + 10]; if (hinfo[id]) continue;
+    let nm = ''; for (let k = 0; k < 13 && raw[t + 169 + k] >= 32 && raw[t + 169 + k] < 127; k++) nm += String.fromCharCode(raw[t + 169 + k]);
+    const arts = []; for (let k = 0; k < 83; k++) { const a = u32(t + 382 + 8 * k); if (a !== 0xffffffff && a > 6) arts.push(a); }
+    hinfo[id] = {owner: o, name: nm, arts};
+  }
+  const heroes = heroTiles.map(h => ({...h, owner: hinfo[h.id] ? hinfo[h.id].owner : 255, name: hinfo[h.id] && hinfo[h.id].name ? hinfo[h.id].name : 'Hero #' + h.id}));
+  // fog: u16 per tile, low byte = player mask, high byte in {0,1}
+  const n4 = 4 * NN; let cand = -1;
+  for (let s = raw.length - 18 - n4; s > tilesEnd; s--) {
+    if (raw[s + 1] > 1 || raw[s + 3] > 1 || raw[s + 5] > 1 || raw[s - 1] <= 1) continue;
+    let ok = true; for (let k = 1; k < 2000; k += 2) if (raw[s + k] > 1) { ok = false; break; }
+    if (!ok) continue;
+    for (let k = 1; k < n4; k += 2) if (raw[s + k] > 1) { ok = false; break; }
+    if (!ok) continue;
+    const seen = new Set(); for (let k = 0; k < n4; k += 2) { seen.add(raw[s + k]); if (seen.size > 8) break; }
+    if (seen.size > 8) { cand = s; break; }
+  }
+  let fog = null;
+  if (cand > 0) {
+    let best = null;
+    for (let s = cand - 8; s <= cand + 16; s += 2) {
+      // sight discs around heroes are symmetric only at the right alignment
+      let asym = 0, n = 0;
+      const m = (x, y, z, b) => (raw[s + 2 * (z * NN + y * N + x)] >> b) & 1;
+      for (const h of heroes) { if (h.owner > 7 || !m(h.x, h.y, h.z, h.owner)) continue; let r = 0, l = 0; while (h.x + r + 1 < N && m(h.x + r + 1, h.y, h.z, h.owner)) r++; while (h.x - l - 1 >= 0 && m(h.x - l - 1, h.y, h.z, h.owner)) l++; if (r < 20 && l < 20 && r + l > 2) { asym += r - l; n++; } }
+      const score = n >= 3 ? Math.abs(asym / n) : 99;
+      if (!best || score < best[0]) best = [score, s];
+    }
+    fog = new Uint8Array(NT); for (let i = 0; i < NT; i++) fog[i] = raw[best[1] + 2 * i];
+  }
+  const heroArts = Object.entries(hinfo).map(([id, h]) => ({id: +id, owner: h.owner, name: h.name, arts: h.arts}));
+  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts};
+}
+const OPOS = Uint8Array.from(atob(DATA.opos), c => c.charCodeAt(0));
+function cp1251(str) { const out = []; for (const ch of str) { const c = ch.charCodeAt(0); out.push(c < 128 ? c : 63); } return out; }
+function findBytes(raw, pat, from, to) { const n = pat.length, f0 = pat[0]; to = Math.min(to, raw.length - n); for (let i = from; i < to; i++) { if (raw[i] !== f0) continue; let ok = true; for (let k = 1; k < n; k++) if (raw[i + k] !== pat[k]) { ok = false; break; } if (ok) return i; } return -1; }
+const fogC = {ow: document.getElementById('fog-ow'), ug: document.getElementById('fog-ug')};
+let heroMk = [];
+const ownMk = new Map();
+for (const w of NAV.own) { const el = document.createElement('div'); el.className = 'mk own'; el.style.left = w.x * 32 + 'px'; el.style.top = w.y * 32 + 'px'; el.title = w.n; el.hidden = true; marks[w.z ? 'ug' : 'ow'].appendChild(el); ownMk.set(w.oi, el); }
+function drawOwners() {
+  for (const w of NAV.own) { const el = ownMk.get(w.oi), o = SAVE && gameOn() ? SAVE.owner.get(w.oi) : undefined; const has = o !== undefined && o < 8; el.hidden = !has; if (has) { el.style.background = PLCOL[o]; el.title = `${w.n}: ${PLAYER[o]}`; } }
+}
+function drawFog() {
+  if (!SAVE || !SAVE.fog) return;
+  const p = +document.getElementById('g-player').value;
+  for (const [lv, z] of [['ow', 0], ['ug', 1]]) {
+    const c = fogC[lv], ctx = c.getContext('2d'), img = ctx.createImageData(N, N);
+    for (let i = 0; i < NN; i++) { const seen = (SAVE.fog[z * NN + i] >> p) & 1; img.data[4 * i + 3] = seen ? 0 : 200; }
+    ctx.putImageData(img, 0, 0);
+  }
+}
+function applyGame() {
+  const on = gameOn();
+  document.getElementById('mode-info').textContent = on ? SAVE.name : '';
+  view.classList.toggle('game', on); view.classList.toggle('fog-on', on && document.getElementById('g-fog').checked); view.classList.toggle('gone-on', on && document.getElementById('g-hide').checked);
+  for (const a of arts) { const el = mkEls.get(a.i); el.classList.toggle('gone', on && (gone(a.oi) || seerDone(a))); if (a.r === 1) { const sp = el.querySelector('span'); const nm = labelOf(a); if (sp.textContent !== nm) sp.textContent = nm; } }
+  for (const el of heroMk) el.hidden = on && !revealed(+el.dataset.x, +el.dataset.y, +el.dataset.z);
+  drawOwners();
+  paintGuards(); refresh(); refreshQuests(); refreshSkills(); refreshCombos(); drawFog(); requestDraw();
+  fogC.ow.classList.toggle('cur', level === 'ow'); fogC.ug.classList.toggle('cur', level === 'ug');
+  if (start && goal) findRoute();
+}
+function loadSave(buf, name) {
+  const st = document.getElementById('save-status');
+  try { SAVE = parseSave(buf); } catch (e) { st.textContent = 'Could not read save: ' + e.message; SAVE = null; applyGame(); return; }
+  SAVE.name = name;
+  const removed = {art: 0, rw: 0, mon: 0, guard: 0};
+  for (const a of arts) if (SAVE.present[a.oi] === 0) removed[a.r === 2 ? 'rw' : 'art']++;
+  for (const m of NAV.mon) if (SAVE.present[m.oi] === 0) removed.mon++;
+  for (const p of GUARDS) if (SAVE.present[p.oi] === 0) removed.guard++;
+  const ownCount = {}; for (const [oi, o] of SAVE.owner) if (o < 8) ownCount[o] = (ownCount[o] || 0) + 1;
+  st.innerHTML = `<b>${name}</b>: ${SAVE.heroes.length} heroes on map, ${removed.art} artifact spots taken, ${removed.rw} reward objects used, ${removed.mon} stacks gone, ${removed.guard} guards passed, ${SAVE.seer.size} Seer's Huts read, ${SAVE.owner.size} flaggable objects read${SAVE.fog ? '' : ', fog not found'}. Owned objects: ` + PLAYER.map((n, p) => ownCount[p] ? `${n} ${ownCount[p]}` : '').filter(Boolean).join(', ') + '.';
+  const sel = document.getElementById('g-player'); sel.innerHTML = '';
+  const counts = PLAYER.map((_, p) => { let n = 0; for (const h of SAVE.heroes) if (h.owner === p) n++; return n; });
+  let seen = PLAYER.map((_, p) => { let c = 0; if (SAVE.fog) for (let i = 0; i < 2 * NN; i++) c += (SAVE.fog[i] >> p) & 1; return c; });
+  for (let p = 0; p < 8; p++) { const o = document.createElement('option'); o.value = p; o.textContent = `${PLAYER[p]}: ${counts[p]} heroes, ${Math.round(100 * seen[p] / (2 * NN))}% explored`; sel.appendChild(o); pdots.children[p].title = o.textContent; }
+  sel.value = curPlayer; sel.onchange = () => setPlayer(+sel.value);
+  document.getElementById('save-ui').hidden = false;
+  modeGame.disabled = false; modeGame.title = ''; document.getElementById('g-mode').checked = true; modeMap.classList.remove('on'); modeGame.classList.add('on');
+  for (const el of heroMk) el.remove(); heroMk = [];
+  const hl = document.getElementById('hlist'); hl.innerHTML = '';
+  for (const h of SAVE.heroes.slice().sort((a, b) => a.owner - b.owner || a.name.localeCompare(b.name))) {
+    const col = h.owner < 8 ? PLCOL[h.owner] : '#999';
+    const el = document.createElement('div'); el.className = 'mk hero' + (h.x > N - 12 ? ' flip' : ''); el.style.borderColor = col; el.dataset.x = h.x; el.dataset.y = h.y; el.dataset.z = h.z; el.style.left = h.x * 32 + 'px'; el.style.top = h.y * 32 + 'px';
+    const sp = document.createElement('span'); sp.textContent = h.name; sp.style.color = col; el.appendChild(sp); marks[h.z ? 'ug' : 'ow'].appendChild(el); heroMk.push(el);
+    const li = document.createElement('li'); li.innerHTML = `<span class="dot" style="background:${col}"></span><span>${h.name}</span><span class="m">${h.owner < 8 ? PLAYER[h.owner] : '?'} (${h.x}, ${h.y}) ${h.z ? 'UG' : 'S'}</span><button class="go" title="Route from here">&rarr;</button>`;
+    li.addEventListener('click', () => { if (level !== (h.z ? 'ug' : 'ow')) setLevel(h.z ? 'ug' : 'ow'); flyTo(h.x, h.y, Math.max(s, 1.2)); });
+    li.querySelector('.go').addEventListener('click', e => { e.stopPropagation(); setStart({x: h.x, y: h.y, z: h.z, name: h.name}); });
+    hl.appendChild(li);
+  }
+  syncKeys(); paintGuards(); refreshQuests(); applyGame();
+}
+const loadedSaves = [];
+const savePick = document.getElementById('save-pick');
+document.getElementById('save-file').addEventListener('change', async e => {
+  const files = [...e.target.files].sort((a, b) => a.lastModified - b.lastModified); if (!files.length) return;
+  for (const f of files) { const b = await f.arrayBuffer(); loadedSaves.push({name: f.name, buf: b, when: f.lastModified}); }
+  savePick.innerHTML = ''; loadedSaves.forEach((sv, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `${sv.name} (${new Date(sv.when).toLocaleString()})`; savePick.appendChild(o); });
+  savePick.hidden = loadedSaves.length < 2; savePick.value = loadedSaves.length - 1;
+  const last = loadedSaves[loadedSaves.length - 1]; loadSave(last.buf, last.name);
+});
+savePick.addEventListener('change', () => { const sv = loadedSaves[+savePick.value]; if (sv) loadSave(sv.buf, sv.name); });
+document.getElementById('copy-path').addEventListener('click', e => { const t = document.getElementById('save-path').textContent; navigator.clipboard.writeText(t).then(() => { e.target.textContent = 'Copied'; }, () => { const r = document.createRange(); r.selectNodeContents(document.getElementById('save-path')); getSelection().removeAllRanges(); getSelection().addRange(r); }); });
+{ const pane = document.getElementById('pane-save');
+  pane.addEventListener('dragover', e => { e.preventDefault(); pane.classList.add('drop'); }); pane.addEventListener('dragleave', () => pane.classList.remove('drop'));
+  pane.addEventListener('drop', async e => { e.preventDefault(); pane.classList.remove('drop'); const files = [...e.dataTransfer.files].sort((a, b) => a.lastModified - b.lastModified); for (const f of files) { const b = await f.arrayBuffer(); loadedSaves.push({name: f.name, buf: b, when: f.lastModified}); }
+    savePick.innerHTML = ''; loadedSaves.forEach((sv, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `${sv.name} (${new Date(sv.when).toLocaleString()})`; savePick.appendChild(o); }); savePick.hidden = loadedSaves.length < 2; savePick.value = loadedSaves.length - 1;
+    const last = loadedSaves[loadedSaves.length - 1]; if (last) loadSave(last.buf, last.name); }); }
+for (const id of ['g-mode', 'g-fog', 'g-hide']) document.getElementById(id).addEventListener('change', applyGame);
+const modeMap = document.getElementById('mode-map'), modeGame = document.getElementById('mode-game');
+function setMode(game) { document.getElementById('g-mode').checked = game; modeMap.classList.toggle('on', !game); modeGame.classList.toggle('on', game); applyGame(); }
+modeMap.addEventListener('click', () => setMode(false)); modeGame.addEventListener('click', () => { if (SAVE) setMode(true); });
+const pdots = document.getElementById('pdots');
+PLAYER.forEach((n, p) => { const b = document.createElement('button'); b.style.background = PLCOL[p]; b.title = n; b.setAttribute('aria-label', n); b.addEventListener('click', () => setPlayer(p)); pdots.appendChild(b); });
+function setPlayer(p) {
+  curPlayer = p; prog = progAll[p]; saveProg();
+  for (const [i, b] of [...pdots.children].entries()) b.classList.toggle('on', i === p);
+  const sel = document.getElementById('g-player'); if (sel.options.length) sel.value = p;
+  syncKeys(); paintGuards(); refreshQuests(); applyGame();
+}
+setPlayer(curPlayer);
+// server-backed save browser (local app); falls back to file input when not served
+const srvList = document.getElementById('srv-list');
+let srvSaves = [];
+async function srvRefresh() {
+  const r = await fetch('/api/saves'); if (!r.ok) throw new Error('no api');
+  const j = await r.json(); srvSaves = j.saves; document.getElementById('srv-path').textContent = j.dir;
+  srvList.innerHTML = '';
+  for (const sv of srvSaves) { const li = document.createElement('li'); li.dataset.n = sv.name; li.innerHTML = `<span>${sv.name.startsWith('../') ? sv.name.slice(3) + ' (Games/)' : sv.name}</span><span class="m">${new Date(sv.mtime * 1000).toLocaleString()} \u00b7 ${(sv.size / 1048576).toFixed(1)} MB</span>`; li.addEventListener('click', () => srvLoad(sv.name)); srvList.appendChild(li); }
+}
+async function srvLoad(name) {
+  for (const li of srvList.children) li.classList.toggle('sel', li.dataset.n === name);
+  document.getElementById('save-status').textContent = 'Loading ' + name + '...';
+  const r = await fetch('/api/save/' + encodeURIComponent(name)); const b = await r.arrayBuffer(); loadSave(b, name);
+}
+document.getElementById('srv-refresh').addEventListener('click', () => srvRefresh().catch(() => {}));
+fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = document.getElementById('srv-pick'); b.hidden = false; b.addEventListener('click', () => fetch('/api/pick').then(() => srvRefresh()).catch(() => {})); if (!j.dir) document.getElementById('save-status').textContent = 'No Heroes 3 saves folder found. Use Choose folder...'; } }).catch(() => {});
+document.getElementById('srv-latest').addEventListener('click', async () => { await srvRefresh().catch(() => {}); if (srvSaves[0]) srvLoad(srvSaves[0].name); });
+srvRefresh().then(() => { document.getElementById('srv-ui').hidden = false; document.getElementById('file-ui').hidden = true; showTab('save'); }).catch(() => {});
+document.getElementById('g-import').addEventListener('click', () => { if (!SAVE) return; let n = 0; for (const p of QUESTS) if (SAVE.present[p.oi] === 0 && !prog.done[spKey(p)]) { prog.done[spKey(p)] = true; n++; } saveProg(); paintGuards(); refreshQuests(); document.getElementById('save-status').innerHTML += ` Imported ${n} passed quest guards.`; });
+
+// ===== map click: pick start/goal or select portal =====
+let downAt = null;
+view.addEventListener('pointerdown', e => { downAt = {x: e.clientX, y: e.clientY, b: e.button}; });
+view.addEventListener('contextmenu', e => e.preventDefault());
+view.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5) return;
+  const r = view.getBoundingClientRect(); const x = Math.floor((e.clientX - r.left - tx) / s / 32), y = Math.floor((e.clientY - r.top - ty) / s / 32);
+  if (x < 0 || y < 0 || x >= N || y >= N) return; const z = level === 'ug' ? 1 : 0;
+  if (pick) { const p = {x, y, z}; const b = document.getElementById('b-' + pick); b.classList.remove('on'); view.classList.remove('pick'); const which = pick; pick = null; which === 'start' ? setStart(p) : setGoal(p); return; }
+  if (!document.getElementById('pane-route').hidden) { if (e.button === 2) setGoal({x, y, z}); else if (e.button === 0) setStart({x, y, z}); return; }
+  const si = spAt[idx(x, y, z)];
+  if (si >= 0 && pmk.has(si)) { selectPortal(si); showTab('po'); return; }
+  if (si >= 0 && gmk.has(si)) { const p = NAV.sp[si];
+    if (p.k === 'borderGuard' || p.k === 'borderGate') { prog.keys[p.c] = !prog.keys[p.c]; saveProg(); syncKeys(); paintGuards(); document.getElementById('s-sel').innerHTML = `<b>${p.c} key</b> ${prog.keys[p.c] ? 'held' : 'not held'}`; if (start && goal) findRoute(); }
+    else { setDone(p, !prog.done[spKey(p)]); document.getElementById('s-sel').innerHTML = `<b>${KIND[p.k]}</b> (${p.x}, ${p.y}) ${prog.done[spKey(p)] ? 'done' : 'not done'}: ${p.q}`; }
+  }
+});
+const _setLevel = setLevel;
+setLevel = function (lv) { _setLevel(lv); placePt(ptA, start); placePt(ptB, goal); drawRoute(); drawLinks(); fogC.ow.classList.toggle('cur', lv === 'ow'); fogC.ug.classList.toggle('cur', lv === 'ug'); };
+document.getElementById('btn-ow').addEventListener('click', () => setLevel('ow'));
+document.getElementById('btn-ug').addEventListener('click', () => setLevel('ug'));
+document.getElementById('lv-ow').addEventListener('click', () => setLevel('ow'));
+document.getElementById('lv-ug').addEventListener('click', () => setLevel('ug'));
+</script>

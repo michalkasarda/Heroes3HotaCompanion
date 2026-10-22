@@ -1,0 +1,10 @@
+electron/node_modules/
+electron/dist/
+electron/release/
+electron/app/
+__pycache__/
+*.pkl
+/overworld.png
+/underground.png
+/overworld_half.png
+/underground_half.png
