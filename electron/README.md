@@ -1,10 +1,14 @@
-# Mysterious Island Atlas
+# Heroes 3 HotA Companion
 
-An interactive companion for the Heroes of Might and Magic III: Horn of the Abyss map
-**The Mysterious Island** (v1-5-j, 252x252, two levels). It renders the map with the
-game's own sprites, knows where every artifact, quest and portal is, finds the cheapest
-route between two points, and reads your savegames to show the world as your player
-currently sees it.
+A desktop companion for Heroes of Might and Magic III: Horn of the Abyss maps. It renders a
+map with the game's own sprites, knows where every artifact, quest, skill and portal is, finds
+the cheapest route between two points with real movement costs, and reads your savegames to
+show the world as your player currently sees it: fog of war, taken items, dead stacks, owners,
+heroes, Seer's Huts done, combination artifacts you can assemble.
+
+Maps are added through a generator pipeline that reads the `.h3m` file and the game's data
+files. The first bundled map is **The Mysterious Island** (v1-5-j, 252x252, two levels); see
+[Adding a map](#adding-a-map) for others.
 
 Everything runs on your machine. No account, no upload, no internet needed.
 
@@ -17,9 +21,9 @@ Grab the latest build from the
 
 | Platform | File |
 |---|---|
-| Windows 10/11 (64-bit) | `MysteriousIslandAtlas-<version>-win-x64.exe` (installer) |
-| Linux, any distro | `MysteriousIslandAtlas-<version>-linux-x86_64.AppImage` (make executable, run) |
-| Debian / Ubuntu | `MysteriousIslandAtlas-<version>-linux-amd64.deb` |
+| Windows 10/11 (64-bit) | `Heroes3HotaCompanion-<version>-win-x64.exe` (installer) |
+| Linux, any distro | `Heroes3HotaCompanion-<version>-linux-x86_64.AppImage` (make executable, run) |
+| Debian / Ubuntu | `Heroes3HotaCompanion-<version>-linux-amd64.deb` |
 
 The executable is not signed, so Windows SmartScreen warns on first start; choose
 "More info" and "Run anyway".
@@ -104,16 +108,21 @@ count as passed automatically. Routing treats locked guards as walls.
 - Creature stack sizes are the ones placed in the map editor; the save does not expose current
   numbers.
 - Hero sprites all use the knight model. A handful of HotA 1.8 decorations have no sprite.
-- Built for this one map and HotA 1.8 saves (map format 10). See below for other maps.
+- Saves must come from HotA 1.8 (map format 10); other versions lay the save out differently.
 
-## Other maps
+## Adding a map
 
-The app is baked for The Mysterious Island: terrain tiles, the sprite atlas, object lists,
-quests and the anchors the save reader needs are all generated from that map file. To get
-another HotA map, the generator pipeline in `src/` has to be run on its `.h3m`
-(`h3m.py` parse, `tiles.py` terrain, `build_assets.py` atlas, `rewards.py`, `nav.py`,
-`oinfo.py`), then the Electron app repacked. Classic SoD maps would need small parser changes;
-HotA versions other than 1.8 may differ in the save layout.
+Each map is generated into its own `app/` bundle: terrain tiles, sprite atlas, object lists,
+quests, routing grid and the anchors the save reader needs. The pipeline lives in `src/` and
+needs a HotA install for the game data files (path in `src/lod.py`) plus the map's `.h3m`:
+
+1. `tiles.py <map.h3m> app --data` and `build_assets.py <map.h3m> app` (terrain, atlas, placements)
+2. `rewards.py <map.h3m> app/data.json`, `nav.py app/data.json`, `oinfo.py app/oinfo.json`
+3. build the page: `page_template.html` with `__DATA__` replaced by `app/data.json`
+
+Then `npm run dist` in `electron/`. A map picker inside the app, so one build can carry several
+maps, is the next planned step. Classic SoD maps need small parser changes; HotA versions other
+than 1.8 may differ in the save layout.
 
 ## Building from source
 
