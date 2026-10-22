@@ -28,13 +28,14 @@ function seedContent() {
 }
 let updState = { status: 'not checked', error: null, checkedAt: null };
 function logLine(s) { try { fs.appendFileSync(path.join(app.getPath('userData'), 'update.log'), new Date().toISOString() + ' ' + s + '\n'); } catch (e) {} }
+function logLine(s) { try { fs.appendFileSync(path.join(app.getPath('userData'), 'update.log'), new Date().toISOString() + ' ' + s + '\n'); } catch (e) {} }
 function toast(msg) { if (win) win.webContents.executeJavaScript(`typeof __toast === 'function' && __toast(${JSON.stringify(msg)})`).catch(() => {}); }
 async function updateContent(manual) {
   const cfg = readConfig(); if (!manual && cfg.autoUpdate === false) { updState = { status: 'automatic updates off', error: null, checkedAt: Date.now() }; return; }
   updState = { status: 'checking', error: null, checkedAt: Date.now() }; logLine('content check start, dir=' + APP_DIR + ' manifest=' + JSON.stringify((readManifest(APP_DIR) || {}).commit));
   try {
     const r = await checkAndUpdate(APP_DIR, (n, t, p) => { updState.status = `downloading ${n}/${t}`; if (n === 1 || n % 10 === 0 || n === t) toast(`Updating map data ${n}/${t}...`); });
-    updState = { status: r.updated ? `updated ${r.changed.length} file(s)` : 'up to date', error: null, checkedAt: Date.now() }; logLine('content check done: ' + updState.status + ' commit=' + r.commit + (r.changed.length ? ' changed=' + r.changed.join(',') : ''));
+    updState = { status: r.updated ? `updated ${r.changed.length} file(s)` : 'up to date', error: null, checkedAt: Date.now() }; logLine('content check done: ' + updState.status + ' commit=' + r.commit + (r.changed.length ? ' changed=' + r.changed.join(',') : '')); logLine('content check done: ' + updState.status + ' commit=' + r.commit + (r.changed.length ? ' changed=' + r.changed.join(',') : ''));
     if (r.updated) { toast('Map data updated, reloading...'); setTimeout(() => win && win.webContents.reload(), 1200); }
     else if (manual) toast('Map data is up to date.');
   } catch (e) { updState = { status: 'check failed', error: e.message, checkedAt: Date.now() }; logLine('content check FAILED: ' + (e.stack || e.message)); if (manual) toast('Update check failed: ' + e.message); }
@@ -150,6 +151,7 @@ app.whenReady().then(async () => {
       { label: 'Check for map data updates now', click: () => updateContent(true) },
       { label: 'Update map data automatically', type: 'checkbox', checked: readConfig().autoUpdate !== false, click: mi => { const c = readConfig(); c.autoUpdate = mi.checked; writeConfig(c); } },
       { label: 'Check for app update (new installer)', click: () => { if (!autoUpdater) return toast('Updater not available in this build.'); autoUpdater.checkForUpdatesAndNotify().catch(e => toast('App update check failed: ' + e.message)); } },
+      { label: 'Open logs and settings folder', click: () => shell.openPath(app.getPath('userData')) },
       { label: 'Open logs and settings folder', click: () => shell.openPath(app.getPath('userData')) },
       { label: 'Reset map data to bundled files', click: () => { fs.rmSync(path.join(app.getPath('userData'), 'content'), { recursive: true, force: true }); APP_DIR = seedContent(); win.webContents.reload(); } },
       { type: 'separator' }, { role: 'quit' } ] },
