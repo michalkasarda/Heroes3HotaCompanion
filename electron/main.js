@@ -87,7 +87,7 @@ function findSaveFolders() {
   }
   const found = new Map(); const deadline = Date.now() + 20000;
   const walk = (d, depth) => {
-    if (depth > 7 || Date.now() > deadline) return;
+    if (depth > 9 || Date.now() > deadline) return;
     let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
     let n = 0, newest = 0;
     for (const e of ents) {
