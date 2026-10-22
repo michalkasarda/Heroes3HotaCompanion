@@ -59,7 +59,8 @@
     "publish": {
       "provider": "github",
       "owner": "michalkasarda",
-      "repo": "Heroes3HotaCompanion"
+      "repo": "Heroes3HotaCompanion",
+      "releaseType": "release"
     }
   },
   "author": "michal",
