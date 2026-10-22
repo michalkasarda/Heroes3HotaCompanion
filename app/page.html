@@ -1104,14 +1104,22 @@ function parseSave(buf) {
   for (let i = 0; i < ntpl; i++) { const L = u16(q); let nm = ''; for (let k = 0; k < L; k++) nm += String.fromCharCode(raw[q + 2 + k]); tplNames.push(nm.toLowerCase()); q += 2 + L + 33; }
   const nobjSave = u32(q); q += 4; const objList = q; q += 5 * nobjSave;
   const objEnd = q;
-  const present = new Uint8Array(DATA.nobj), defOf = new Int32Array(DATA.nobj).fill(-1);
-  { let j = 0;
+  // match save objects to map objects by position (several objects may share one; taken in order); map objects without a match keep their map state
+  const present = new Uint8Array(DATA.nobj).fill(1), defOf = new Int32Array(DATA.nobj).fill(-1), saveIdx = new Int32Array(DATA.nobj).fill(-1);
+  let matched = 0;
+  { const byPos = new Map();
+    for (let j = 0; j < DATA.nobj; j++) { const k = OPOS[3 * j] | OPOS[3 * j + 1] << 8 | OPOS[3 * j + 2] << 16; let q = byPos.get(k); if (!q) byPos.set(k, q = []); q.push(j); }
     for (let i = 0; i < nobjSave; i++) {
-      const o = objList + 5 * i;
-      if (j < DATA.nobj && raw[o] === OPOS[3 * j] && raw[o + 1] === OPOS[3 * j + 1] && raw[o + 2] === OPOS[3 * j + 2]) { if (presentSave[i]) present[j] = 1; defOf[j] = u16(o + 3); j++; }
+      const o = objList + 5 * i, q = byPos.get(raw[o] | raw[o + 1] << 8 | raw[o + 2] << 16); if (!q || !q.length) continue;
+      const j = q.shift(); saveIdx[j] = i; matched++; present[j] = presentSave[i] ? 1 : 0; defOf[j] = u16(o + 3);
     }
-    if (j < DATA.nobj - 50) throw new Error('Object list does not match the map (aligned ' + j + ' of ' + DATA.nobj + ', save has ' + nobjSave + '). Save format ' + u32(8) + '.' + u32(12) + ', the app was built for 44.11 (HotA 1.8). The save may come from another version of this map or of HotA.');
+    if (matched < DATA.nobj * 0.9) throw new Error('Object list does not match the map (' + matched + ' of ' + DATA.nobj + ' objects found, save has ' + nobjSave + '). Save format ' + u32(8) + '.' + u32(12) + ', the app was built for 44.11 (HotA 1.8). The save may come from another map or another version of HotA.');
   }
+  // per-class record arrays follow the save's object order, so rank each object among its class by save position
+  const saveRank = list => { const ord = list.map((w, k) => k).sort((a, b) => saveIdx[list[a].oi] - saveIdx[list[b].oi]); const r = new Int32Array(list.length); ord.forEach((k, rank) => { r[k] = rank; }); return r; };
+  const ownRank = {}; for (const kind of ['mine', 'garrison']) { const l = NAV.own.filter(w => w.k === kind); const r = saveRank(l); l.forEach((w, k) => { ownRank[w.oi] = r[k]; }); }
+  { const reg = NAV.own.filter(w => w.k === 'dwelling' && !w.rnd), rnd = NAV.own.filter(w => w.k === 'dwelling' && w.rnd); const r1 = saveRank(reg), r2 = saveRank(rnd); reg.forEach((w, k) => { ownRank[w.oi] = r1[k]; }); rnd.forEach((w, k) => { ownRank[w.oi] = reg.length + r2[k]; }); }
+  const monRank = saveRank(NAV.mon);
   // owner arrays: [u32 mines][mines x62][u16 dwellings][dwellings x75][u8 garrisons][garrisons x61]
   const C = NAV.counts; let chain = -1;
   for (let b = objEnd; b < raw.length - 100000; b++) {
@@ -1121,9 +1129,9 @@ function parseSave(buf) {
   if (chain >= 0) {
     const mb = chain + 4, db = mb + C.mine * 62 + 2, gb = db + C.dwelling * 75 + 1, ge = gb + C.garrison * 61;
     for (const w of NAV.own) {
-      if (w.k === 'mine') owner.set(w.oi, raw[mb + w.ri * 62]);
-      else if (w.k === 'dwelling') owner.set(w.oi, raw[db + w.ri * 75]);
-      else if (w.k === 'garrison') owner.set(w.oi, raw[gb + w.ri * 61]);
+      if (w.k === 'mine') owner.set(w.oi, raw[mb + ownRank[w.oi] * 62]);
+      else if (w.k === 'dwelling') owner.set(w.oi, raw[db + ownRank[w.oi] * 75]);
+      else if (w.k === 'garrison') owner.set(w.oi, raw[gb + ownRank[w.oi] * 61]);
       else if (w.k === 'town') { const nm = cp1251(w.n); const p = findBytes(raw, [nm.length & 255, nm.length >> 8, ...nm], ge, ge + 400000); if (p >= 0) owner.set(w.oi, raw[p - 69]); }
     }
   }
@@ -1190,8 +1198,8 @@ function parseSave(buf) {
   { let p = -1; for (let s = raw.length - 40; s > raw.length - 400000 && s > 0; s--) if (u32(s) === 100 && u32(s - 33) === 100 && u32(s - 66) === 100) { p = s; break; }
     const n = NAV.mon.length, first = p - 16 - 33 * (n - 1);
     if (p > 0 && first > 0) { let ok = 0; for (let i = 0; i < n; i++) if (u32(first + 33 * i + 16) === 100) ok++;
-      if (ok > 0.9 * n) { count = new Map(); for (let i = 0; i < n; i++) count.set(NAV.mon[i].oi, u32(first + 33 * i)); } } }
-  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count};
+      if (ok > 0.9 * n) { count = new Map(); for (let i = 0; i < n; i++) count.set(NAV.mon[i].oi, u32(first + 33 * monRank[i])); } } }
+  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count, matched};
 }
 const OPOS = Uint8Array.from(atob(DATA.opos), c => c.charCodeAt(0));
 function cp1251(str) { const out = []; for (const ch of str) { const c = ch.charCodeAt(0); out.push(c < 128 ? c : 63); } return out; }
@@ -1232,7 +1240,7 @@ function loadSave(buf, name) {
   for (const m of NAV.mon) if (SAVE.present[m.oi] === 0) removed.mon++;
   for (const p of GUARDS) if (SAVE.present[p.oi] === 0) removed.guard++;
   const ownCount = {}; for (const [oi, o] of SAVE.owner) if (o < 8) ownCount[o] = (ownCount[o] || 0) + 1;
-  st.innerHTML = `<b>${name}</b>: ${SAVE.heroes.length} heroes on map, ${removed.art} artifact spots taken, ${removed.rw} reward objects used, ${removed.mon} stacks gone, ${removed.guard} guards passed, ${SAVE.seer.size} Seer's Huts read, ${SAVE.owner.size} flaggable objects read${SAVE.count ? ', stack sizes read' : ''}${SAVE.keys ? ', keys read' : ''}${SAVE.fog ? '' : ', fog not found'}. Owned objects: ` + PLAYER.map((n, p) => ownCount[p] ? `${n} ${ownCount[p]}` : '').filter(Boolean).join(', ') + '.';
+  st.innerHTML = `<b>${name}</b>: ${SAVE.heroes.length} heroes on map, ${removed.art} artifact spots taken, ${removed.rw} reward objects used, ${removed.mon} stacks gone, ${removed.guard} guards passed, ${SAVE.seer.size} Seer's Huts read, ${SAVE.owner.size} flaggable objects read${SAVE.matched < DATA.nobj ? ', ' + (DATA.nobj - SAVE.matched) + ' map objects not in the save' : ''}${SAVE.count ? ', stack sizes read' : ''}${SAVE.keys ? ', keys read' : ''}${SAVE.fog ? '' : ', fog not found'}. Owned objects: ` + PLAYER.map((n, p) => ownCount[p] ? `${n} ${ownCount[p]}` : '').filter(Boolean).join(', ') + '.';
   const sel = document.getElementById('g-player'); sel.innerHTML = '';
   const counts = PLAYER.map((_, p) => { let n = 0; for (const h of SAVE.heroes) if (h.owner === p) n++; return n; });
   let seen = PLAYER.map((_, p) => { let c = 0; if (SAVE.fog) for (let i = 0; i < 2 * NN; i++) c += (SAVE.fog[i] >> p) & 1; return c; });
@@ -1318,6 +1326,9 @@ async function srvLoad(name) {
   for (const li of srvList.children) li.classList.toggle('sel', li.dataset.n === name);
   if (folderOf(name) !== srvFolder) { srvFolder = folderOf(name); renderSaveList(); }
   document.getElementById('save-status').textContent = 'Loading ' + name + '...';
+  // a save from another map: open that map and come back with the save
+  const sm = await fetch('/api/savemap?file=' + encodeURIComponent(name)).then(r => r.json()).catch(() => ({}));
+  if (sm.mapFile) { const cur = await fetch('/api/info').then(r => r.json()); if (!cur.map || cur.map.file !== sm.mapFile) { document.getElementById('save-status').textContent = 'Opening ' + sm.mapName + '...'; await fetch('/api/map/open?file=' + encodeURIComponent(sm.mapFile)); location.href = '/?save=' + encodeURIComponent(name); return; } }
   const r = await fetch('/api/save/' + encodeURIComponent(name)); const b = await r.arrayBuffer(); loadSave(b, name);
 }
 document.getElementById('srv-refresh').addEventListener('click', () => srvRefresh().catch(() => {}));

@@ -133,7 +133,6 @@ function build(m, gd) {
   // record indices: map order per kind; dwellings = regular first, random after
   const rank = {}; for (const w of own) { if (w.k !== 'dwelling') w.ri = rank[w.k] = (rank[w.k] === undefined ? 0 : rank[w.k] + 1); }
   let ri = 0; for (const w of own) if (w.k === 'dwelling' && !w.rnd) w.ri = ri++; for (const w of own) if (w.k === 'dwelling' && w.rnd) w.ri = ri++;
-  for (const w of own) delete w.rnd;
   const counts = { mine: own.filter(w => w.k === 'mine').length, dwelling: own.filter(w => w.k === 'dwelling').length, garrison: own.filter(w => w.k === 'garrison').length };
 
   // ---- tooltips ----

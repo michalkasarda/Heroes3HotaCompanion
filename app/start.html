@@ -19,7 +19,7 @@ li:hover{background:var(--panel2)}li.sel{background:var(--panel2);box-shadow:ins
 .empty{color:var(--muted);padding:14px 10px;font-size:12.5px;line-height:1.5}
 </style></head><body>
 <div class="wrap">
-  <div><h1>Heroes 3 HotA Companion</h1><p class="sub">Pick a map, then a save (optional). The map is parsed from its .h3m file and drawn with the game's own graphics; the save adds fog of war, current state and your heroes.</p></div>
+  <div><h1>Heroes 3 HotA Companion</h1><p class="sub">Pick a save and its map is found automatically, or pick a map alone. The map is parsed from its .h3m file and drawn with the game's own graphics; the save adds fog of war, current state and your heroes.</p></div>
   <div class="cols">
     <div class="card"><h2>Map <button class="btn" id="b-game">Game folder...</button></h2><div class="path" id="mapdir"></div><ul id="maps"></ul></div>
     <div class="card"><h2>Save <span><button class="btn" id="b-find">Find saves</button> <button class="btn" id="b-saves">Saves folder...</button></span></h2><div class="path" id="savedir"></div><ul id="saves"></ul></div>
@@ -35,7 +35,7 @@ async function loadMaps() {
   const j = await fetch('/api/maps').then(r => r.json()); maps = j.maps; $('mapdir').textContent = j.gameDir ? j.gameDir + ' (Maps)' : 'Heroes 3 game folder not found. Use "Game folder..." and point at the HotA install (the folder with h3hota.exe).';
   const ul = $('maps'); ul.innerHTML = ''; if (!maps.length) ul.innerHTML = '<li class="empty">No .h3m maps found.</li>';
   try { const last = localStorage.getItem('hc-map'); if (last && maps.some(m => m.file === last)) selMap = last; } catch (e) {}
-  for (const m of maps) { const li = document.createElement('li'); li.innerHTML = `<span>${m.name}</span><span class="m">${(m.size / 1024).toFixed(0)} KB</span>`; if (m.file === selMap) li.classList.add('sel'); li.addEventListener('click', () => { selMap = m.file; for (const l of ul.children) l.classList.toggle('sel', l === li); update(); }); ul.appendChild(li); }
+  for (const m of maps) { const li = document.createElement('li'); li.dataset.f = m.file; li.innerHTML = `<span>${m.name}</span><span class="m">${(m.size / 1024).toFixed(0)} KB</span>`; if (m.file === selMap) li.classList.add('sel'); li.addEventListener('click', () => { selMap = m.file; for (const l of ul.children) l.classList.toggle('sel', l === li); update(); }); ul.appendChild(li); }
   update();
 }
 async function loadSaves() {
@@ -51,7 +51,14 @@ function renderSaves() {
     return;
   }
   const back = document.createElement('li'); back.className = 'back'; back.innerHTML = `<span>\u2190 ${folder || 'Games (loose saves)'}</span><span class="m">all maps</span>`; back.addEventListener('click', () => { folder = null; selSave = null; renderSaves(); update(); }); ul.appendChild(back);
-  for (const s of groups.get(folder)) { const li = document.createElement('li'); li.innerHTML = `<span>${s.name.slice(s.name.lastIndexOf('/') + 1)}</span><span class="m">${fmt(s.mtime * 1000)}</span>`; if (s.name === selSave) li.classList.add('sel'); li.addEventListener('click', () => { selSave = s.name; for (const l of ul.children) l.classList.toggle('sel', l === li); update(); }); ul.appendChild(li); }
+  for (const s of groups.get(folder)) { const li = document.createElement('li'); li.innerHTML = `<span>${s.name.slice(s.name.lastIndexOf('/') + 1)}</span><span class="m">${fmt(s.mtime * 1000)}</span>`; if (s.name === selSave) li.classList.add('sel'); li.addEventListener('click', () => { selSave = s.name; for (const l of ul.children) l.classList.toggle('sel', l === li); update(); mapForSave(s.name); }); ul.appendChild(li); }
+}
+async function mapForSave(name) {
+  const j = await fetch('/api/savemap?file=' + encodeURIComponent(name)).then(r => r.json());
+  if (selSave !== name) return;
+  if (j.mapFile) { selMap = j.mapFile; const ul = $('maps'); for (const l of ul.children) { const on = l.dataset.f === selMap; l.classList.toggle('sel', on); if (on) l.scrollIntoView({ block: 'nearest' }); } $('status').textContent = 'Map: ' + j.mapName + ' (from the save)'; }
+  else $('status').textContent = j.h3m ? 'This save was made on "' + j.h3m + '", which is not in the Maps folder. Pick its map on the left.' : 'Could not read the map name from this save. Pick its map on the left.';
+  update();
 }
 function update() { $('b-open').disabled = !selMap || !selSave; $('b-maponly').disabled = !selMap; $('b-open').textContent = selSave ? 'Open map + save' : 'Open'; }
 async function open(withSave) {

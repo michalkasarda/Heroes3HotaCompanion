@@ -1,6 +1,7 @@
 // HTTP server used by the Electron shell and by `node app/lib/standalone.js`.
 // Serves the page (with the current map's data injected), static files, and the JSON API.
 const http = require('http');
+const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
 const { parse } = require('./h3m');
@@ -17,6 +18,17 @@ function findGameDir(hints) {
 }
 // a map subfolder inside Games (HotA keeps saves per map) means the Games folder itself
 function normSaves(d) { if (!d) return d; const parent = path.dirname(d); return /^games$/i.test(path.basename(parent)) && !/^games$/i.test(path.basename(d)) ? parent : d; }
+// the map file name a save was made from (stored as a NUL-terminated string early in the save)
+function saveMapFile(buf) {
+  let hl = 10; const flg = buf[3];
+  if (flg & 4) hl += 2 + buf.readUInt16LE(hl);
+  if (flg & 8) { while (buf[hl]) hl++; hl++; }
+  if (flg & 16) { while (buf[hl]) hl++; hl++; }
+  if (flg & 2) hl += 2;
+  const head = zlib.inflateRawSync(buf.subarray(hl, hl + 65536), { finishFlush: zlib.constants.Z_SYNC_FLUSH });
+  const m = /([^\x00-\x1f]{1,200}\.h3m)\x00/i.exec(head.toString('latin1'));
+  return m ? m[1] : null;
+}
 function listMaps(dirs) {
   const out = [];
   for (const d of dirs) { if (!d || !fs.existsSync(d)) continue; for (const f of fs.readdirSync(d)) if (/\.h3m$/i.test(f)) { const p = path.join(d, f); const st = fs.statSync(p); out.push({ file: p, name: f.replace(/\.h3m$/i, ''), mtime: st.mtimeMs, size: st.size }); } }
@@ -63,6 +75,9 @@ function createServer(opts) {
       if (url === '/api/find') { const seen = new Map(); for (const f of opts.onFind ? opts.onFind() : []) { const d = normSaves(f.dir); const q = seen.get(d); if (q) { q.count += f.count; q.newest = Math.max(q.newest, f.newest); } else seen.set(d, Object.assign({}, f, { dir: d })); } return json(200, { folders: [...seen.values()].sort((a, b) => b.newest - a.newest) }); }
       if (url.startsWith('/api/use/')) { const d = normSaves(url.slice('/api/use/'.length)); if (!fs.existsSync(d)) return json(404, { error: 'missing' }); opts.setSavesDir(d); return json(200, { dir: d }); }
       if (url === '/api/saves') { const d = normSaves(opts.getSavesDir()); return json(200, { dir: d || '', saves: d ? opts.listSaves(d) : [] }); }
+      if (url === '/api/savemap') { const d = opts.getSavesDir(); const rel = u.searchParams.get('file') || ''; const p = path.normalize(path.join(d || '', rel)); if (!d || !p.startsWith(path.normalize(d)) || !fs.existsSync(p)) return json(404, { error: 'not found' });
+        const h3m = saveMapFile(fs.readFileSync(p)); const maps = listMaps([opts.getGameDir() && path.join(opts.getGameDir(), 'Maps')].concat(opts.getExtraMapDirs ? opts.getExtraMapDirs() : []));
+        const hit = h3m ? maps.find(m => path.basename(m.file).toLowerCase() === h3m.toLowerCase()) : null; return json(200, { h3m, mapFile: hit ? hit.file : null, mapName: hit ? hit.name : null }); }
       if (url.startsWith('/api/save/')) { const d = opts.getSavesDir(); if (!d) return json(404, { error: 'no folder' }); const p = path.normalize(path.join(d, url.slice('/api/save/'.length))); if (!p.startsWith(path.normalize(d)) || !fs.existsSync(p)) return json(404, { error: 'not found' }); return raw(fs.readFileSync(p)); }
       if (url === '/' || url === '/index.html') {
         if (!st.map) { res.writeHead(302, { Location: '/start.html' }); return res.end(); }
