@@ -928,7 +928,7 @@ function buildSkillList(cat, listId, qId, countId) {
   for (const e of sorted) {
     total++; const kind = e.k === 'Seafaring Academy' ? 'University' : e.k; const nm = e.n.replace(/^spell: /, '');
     const ok = kinds.has(kind) && (!t || `${nm} ${e.v} ${e.k} ${LV[e.z ? 'ug' : 'ow']}`.toLowerCase().includes(t));
-    skmk.get(e.i).hidden = !ok; if (!ok) continue; n++;
+    const mk = skmk.get(e.i); mk.hidden = !ok; mk.classList.toggle('gone', gone(e.oi)); if (!ok) continue; n++;
     const li = document.createElement('li'); li.dataset.i = e.i; li.tabIndex = 0; li.className = (selSk === e.i ? 'sel' : '') + (gone(e.oi) ? ' gone' : '');
     li.innerHTML = `<span class="n">${nm}</span><button class="go" title="Route to this">&rarr;</button><span class="m"><span class="lv">${e.k}</span><span>${LV[e.z ? 'ug' : 'ow']} ${e.x}, ${e.y}</span>${e.v ? `<span>${e.v}</span>` : ''}</span>`;
     li.querySelector('.go').addEventListener('click', ev => { ev.stopPropagation(); setGoal({x: e.x, y: e.y, z: e.z, name: e.k + ' ' + nm}); });
@@ -1181,8 +1181,11 @@ function parseSave(buf) {
     const seen = new Set(); for (let k = 0; k < n4; k += 2) { seen.add(raw[s + k]); if (seen.size > 8) break; }
     if (seen.size > 8) { cand = s; break; }
   }
+  // fog: u16 per tile, 21 bytes past the key block (verified on every save of a 158-save game); the sight-disc search below is only a fallback
   let fog = null;
-  if (cand > 0) {
+  { let last = -1; for (const h of Object.values(hinfo)) if (h.t > last) last = h.t; const kb = last + 1160 + 513;
+    if (last > 0 && u32(kb + 9) === 0x400cbf01) { fog = new Uint8Array(NT); for (let i = 0; i < NT; i++) fog[i] = raw[kb + 21 + 2 * i]; } }
+  if (!fog && cand > 0) {
     let best = null;
     for (let s = cand - 8; s <= cand + 16; s += 2) {
       // sight discs around heroes are symmetric only at the right alignment
