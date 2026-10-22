@@ -1218,14 +1218,37 @@ setPlayer(curPlayer);
 // server-backed save browser (local app); falls back to file input when not served
 const srvList = document.getElementById('srv-list');
 let srvSaves = [];
+let srvFolder = null; try { srvFolder = localStorage.getItem('mi-folder'); } catch (e) {}
+function folderOf(name) { const i = name.lastIndexOf('/'); return i < 0 ? '' : name.slice(0, i).replace(/^\.\.$/, ''); }
 async function srvRefresh() {
   const r = await fetch('/api/saves'); if (!r.ok) throw new Error('no api');
   const j = await r.json(); srvSaves = j.saves; document.getElementById('srv-path').textContent = j.dir;
+  renderSaveList();
+}
+function renderSaveList() {
   srvList.innerHTML = '';
-  for (const sv of srvSaves) { const li = document.createElement('li'); li.dataset.n = sv.name; li.innerHTML = `<span>${sv.name.startsWith('../') ? sv.name.slice(3) + ' (Games/)' : sv.name}</span><span class="m">${new Date(sv.mtime * 1000).toLocaleString()} \u00b7 ${(sv.size / 1048576).toFixed(1)} MB</span>`; li.addEventListener('click', () => srvLoad(sv.name)); srvList.appendChild(li); }
+  const groups = new Map();
+  for (const sv of srvSaves) { const f = folderOf(sv.name); if (!groups.has(f)) groups.set(f, []); groups.get(f).push(sv); }
+  if (srvFolder !== null && !groups.has(srvFolder)) srvFolder = null;
+  if (srvFolder === null) {
+    const folders = [...groups.entries()].map(([f, list]) => ({f, n: list.length, newest: Math.max(...list.map(s => s.mtime))})).sort((a, b) => b.newest - a.newest);
+    for (const g of folders) {
+      const li = document.createElement('li'); li.innerHTML = `<span>\u{1F4C1} ${g.f || 'Games (loose saves)'}</span><span class="m">${g.n} saves · ${new Date(g.newest * 1000).toLocaleDateString()}</span>`;
+      li.addEventListener('click', () => { srvFolder = g.f; try { localStorage.setItem('mi-folder', g.f); } catch (e) {} renderSaveList(); }); srvList.appendChild(li);
+    }
+    return;
+  }
+  const back = document.createElement('li'); back.innerHTML = `<span>← ${srvFolder || 'Games (loose saves)'}</span><span class="m">all maps</span>`; back.style.color = 'var(--gold)';
+  back.addEventListener('click', () => { srvFolder = null; try { localStorage.removeItem('mi-folder'); } catch (e) {} renderSaveList(); }); srvList.appendChild(back);
+  for (const sv of groups.get(srvFolder)) {
+    const li = document.createElement('li'); li.dataset.n = sv.name; const base = sv.name.slice(sv.name.lastIndexOf('/') + 1);
+    li.innerHTML = `<span>${base}</span><span class="m">${new Date(sv.mtime * 1000).toLocaleString()} · ${(sv.size / 1048576).toFixed(1)} MB</span>`;
+    li.addEventListener('click', () => srvLoad(sv.name)); if (SAVE && SAVE.name === sv.name) li.classList.add('sel'); srvList.appendChild(li);
+  }
 }
 async function srvLoad(name) {
   for (const li of srvList.children) li.classList.toggle('sel', li.dataset.n === name);
+  if (folderOf(name) !== srvFolder) { srvFolder = folderOf(name); renderSaveList(); }
   document.getElementById('save-status').textContent = 'Loading ' + name + '...';
   const r = await fetch('/api/save/' + encodeURIComponent(name)); const b = await r.arrayBuffer(); loadSave(b, name);
 }
@@ -1238,7 +1261,7 @@ fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = docum
       document.getElementById('save-status').textContent = r.folders.length + ' folder(s) with saves found, pick one:';
       openMenu(r.folders.map(fo => ({label: fo.dir, sub: `${fo.count} saves, newest ${new Date(fo.newest).toLocaleString()}`, run: () => fetch('/api/use/' + encodeURIComponent(fo.dir)).then(() => srvRefresh()).catch(() => {})})), e.clientX, e.clientY);
     }); if (!j.dir) document.getElementById('save-status').textContent = 'No Heroes 3 saves folder found. Use Choose folder...'; } }).catch(() => {});
-document.getElementById('srv-latest').addEventListener('click', async () => { await srvRefresh().catch(() => {}); if (srvSaves[0]) srvLoad(srvSaves[0].name); });
+document.getElementById('srv-latest').addEventListener('click', async () => { await srvRefresh().catch(() => {}); const pool = srvFolder === null ? srvSaves : srvSaves.filter(sv => folderOf(sv.name) === srvFolder); if (pool[0]) srvLoad(pool[0].name); });
 srvRefresh().then(() => { document.getElementById('srv-ui').hidden = false; document.getElementById('file-ui').hidden = true; showTab('save'); }).catch(() => {});
 document.getElementById('g-import').addEventListener('click', () => { if (!SAVE) return; let n = 0; for (const p of QUESTS) if (SAVE.present[p.oi] === 0 && !prog.done[spKey(p)]) { prog.done[spKey(p)] = true; n++; } saveProg(); paintGuards(); refreshQuests(); document.getElementById('save-status').innerHTML += ` Imported ${n} passed quest guards.`; });
 
