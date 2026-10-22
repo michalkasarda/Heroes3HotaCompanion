@@ -40,7 +40,7 @@ function createServer(opts) {
     const json = (code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': b.length }); res.end(b); };
     const raw = (buf, type) => { res.writeHead(200, { 'Content-Type': type || 'application/octet-stream', 'Content-Length': buf.length }); res.end(buf); };
     try {
-      if (url === '/api/info') return json(200, Object.assign({ pick: true, dir: opts.getSavesDir(), gameDir: opts.getGameDir(), map: st.map ? { file: st.map.file, name: st.map.name, size: st.map.size, levels: st.map.levels } : null }, opts.info ? opts.info() : {}));
+      if (url === '/api/info') return json(200, Object.assign({ pick: true, dir: opts.getSavesDir(), gameDir: opts.getGameDir(), data: st.gd ? { lods: st.gd.lods.map(l => path.basename(l.file)), defs: st.gd.extra.size } : null, sprites: st.map ? { keys: Object.keys(st.map.atlas.entries).length, found: Object.values(st.map.atlas.entries).filter(Boolean).length } : null, map: st.map ? { file: st.map.file, name: st.map.name, size: st.map.size, levels: st.map.levels } : null }, opts.info ? opts.info() : {}));
       if (url === '/api/maps') return json(200, { gameDir: opts.getGameDir(), maps: listMaps([opts.getGameDir() && path.join(opts.getGameDir(), 'Maps')].concat(opts.getExtraMapDirs ? opts.getExtraMapDirs() : [])) });
       if (url === '/api/map/open') { const file = u.searchParams.get('file'); if (!file || !fs.existsSync(file)) return json(404, { error: 'map file not found' }); const m = openMap(file); return json(200, { name: m.name, size: m.size, levels: m.levels, file }); }
       if (url.startsWith('/api/map/')) {

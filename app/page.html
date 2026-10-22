@@ -1110,7 +1110,7 @@ function parseSave(buf) {
       const o = objList + 5 * i;
       if (j < DATA.nobj && raw[o] === OPOS[3 * j] && raw[o + 1] === OPOS[3 * j + 1] && raw[o + 2] === OPOS[3 * j + 2]) { if (presentSave[i]) present[j] = 1; defOf[j] = u16(o + 3); j++; }
     }
-    if (j < DATA.nobj - 50) throw new Error('Object list does not match the map (aligned ' + j + ' of ' + DATA.nobj + ').');
+    if (j < DATA.nobj - 50) throw new Error('Object list does not match the map (aligned ' + j + ' of ' + DATA.nobj + ', save has ' + nobjSave + '). Save format ' + u32(8) + '.' + u32(12) + ', the app was built for 44.11 (HotA 1.8). The save may come from another version of this map or of HotA.');
   }
   // owner arrays: [u32 mines][mines x62][u16 dwellings][dwellings x75][u8 garrisons][garrisons x61]
   const C = NAV.counts; let chain = -1;
@@ -1322,7 +1322,7 @@ async function srvLoad(name) {
 }
 document.getElementById('srv-refresh').addEventListener('click', () => srvRefresh().catch(() => {}));
 document.getElementById('srv-start').addEventListener('click', () => { location.href = '/start.html'; });
-function showVersion() { fetch('/api/info').then(r => r.json()).then(j => { if (!j.version) return; const c = j.content || {}, u = j.update || {}; document.getElementById('srv-ver').textContent = `App v${j.version} \u00b7 files ${c.commit ? c.commit.slice(0, 7) + ' from ' + new Date(c.date).toLocaleString() : 'bundled'} \u00b7 update: ${u.status}${u.error ? ' (' + u.error + ')' : ''}`; }).catch(() => {}); }
+function showVersion() { fetch('/api/info').then(r => r.json()).then(j => { if (!j.version) return; const c = j.content || {}, u = j.update || {}; document.getElementById('srv-ver').textContent = `App v${j.version} \u00b7 files ${c.commit ? c.commit.slice(0, 7) + ' from ' + new Date(c.date).toLocaleString() : 'bundled'} \u00b7 update: ${u.status}${u.error ? ' (' + u.error + ')' : ''} \u00b7 game data: ${j.gameDir || 'not found'}${j.data ? ' (' + j.data.lods.join(', ') + '; ' + j.data.defs + ' bundled sprites)' : ''}${j.sprites ? ' \u00b7 sprites found ' + j.sprites.found + '/' + j.sprites.keys : ''}`; }).catch(() => {}); }
 showVersion(); setInterval(showVersion, 5000);
 fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = document.getElementById('srv-pick'); b.hidden = false; b.addEventListener('click', () => fetch('/api/pick').then(() => srvRefresh()).catch(() => {}));
     const f = document.getElementById('srv-find'); f.hidden = false; f.addEventListener('click', async e => {

@@ -5,6 +5,7 @@ const zlib = require('zlib');
 
 class Lod {
   constructor(file) {
+    this.file = file;
     this.fd = fs.openSync(file, 'r');
     const head = Buffer.alloc(92); fs.readSync(this.fd, head, 0, 92, 0);
     const n = head.readUInt32LE(8); this.entries = new Map();
