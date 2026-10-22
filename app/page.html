@@ -322,7 +322,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       <div id="srv-ui" hidden>
         <div class="row"><span id="srv-path" class="hint2 tiny" style="word-break:break-all"></span></div>
         <div class="row"><span id="srv-ver" class="hint2 tiny"></span></div>
-        <div class="btns"><button class="btn" id="srv-refresh">Refresh list</button><button class="btn" id="srv-latest">Load newest</button><button class="btn" id="srv-pick" hidden>Choose folder...</button><button class="btn" id="srv-find" hidden>Find saves on this PC</button><button class="btn" id="srv-start">Change map...</button></div>
+        <div class="btns"><button class="btn" id="srv-refresh">Refresh list</button><button class="btn" id="srv-latest">Load newest</button><label class="tiny" style="display:inline-flex;align-items:center;gap:4px;margin-left:4px"><input type="checkbox" id="srv-follow">Follow newest save</label><button class="btn" id="srv-pick" hidden>Choose folder...</button><button class="btn" id="srv-find" hidden>Find saves on this PC</button><button class="btn" id="srv-start">Change map...</button></div>
         <ul class="savelist" id="srv-list"></ul>
       </div>
       <div id="file-ui">
@@ -1356,6 +1356,18 @@ fetch('/api/info').then(r => r.json()).then(j => { if (j.pick) { const b = docum
       openMenu(r.folders.map(fo => ({label: fo.dir, sub: `${fo.count} saves, newest ${new Date(fo.newest).toLocaleString()}`, run: () => fetch('/api/use/' + encodeURIComponent(fo.dir)).then(() => srvRefresh()).catch(() => {})})), e.clientX, e.clientY);
     }); if (!j.dir) document.getElementById('save-status').textContent = 'No Heroes 3 saves folder found. Use Choose folder...'; } }).catch(() => {});
 document.getElementById('srv-latest').addEventListener('click', async () => { await srvRefresh().catch(() => {}); const pool = srvFolder === null ? srvSaves : srvSaves.filter(sv => folderOf(sv.name) === srvFolder); if (pool[0]) srvLoad(pool[0].name); });
+// follow mode: every 2 s look for the save with the newest timestamp (current folder) and load it when it changed; a file is only read once it is a second old so a save still being written is skipped
+const followEl = document.getElementById('srv-follow'); let loadedMtime = 0, following = false;
+try { followEl.checked = localStorage.getItem('hc-follow') === '1'; } catch (e) {}
+followEl.addEventListener('change', () => { try { localStorage.setItem('hc-follow', followEl.checked ? '1' : '0'); } catch (e) {} followTick(); });
+async function followTick() {
+  if (!followEl.checked || following) return; following = true;
+  const j = await fetch('/api/saves').then(r => r.json()).catch(() => null);
+  if (j) { const pool = srvFolder === null ? j.saves : j.saves.filter(sv => folderOf(sv.name) === srvFolder); const top = pool[0];
+    if (top && Date.now() / 1000 - top.mtime > 1 && (!SAVE || SAVE.name !== top.name || top.mtime !== loadedMtime)) { srvSaves = j.saves; renderSaveList(); loadedMtime = top.mtime; await srvLoad(top.name).catch(() => {}); } }
+  following = false;
+}
+setInterval(followTick, 2000);
 srvRefresh().then(() => { document.getElementById('srv-ui').hidden = false; document.getElementById('file-ui').hidden = true; const want = new URLSearchParams(location.search).get('save'); if (want && srvSaves.some(sv => sv.name === want)) srvLoad(want); }).catch(() => {});
 document.getElementById('g-import').addEventListener('click', () => { if (!SAVE) return; let n = 0; for (const p of QUESTS) if (SAVE.present[p.oi] === 0 && !prog.done[spKey(p)]) { prog.done[spKey(p)] = true; n++; } saveProg(); paintGuards(); refreshQuests(); document.getElementById('save-status').innerHTML += ` Imported ${n} passed quest guards.`; });
 
