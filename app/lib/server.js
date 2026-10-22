@@ -4,7 +4,7 @@ const http = require('http');
 const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
-const { parse } = require('./h3m');
+const { parse, title } = require('./h3m');
 const { GameData } = require('./h3lod');
 const { build } = require('./mapdata');
 const { Atlas, terrainSheet, iconSheet } = require('./atlas');
@@ -26,9 +26,12 @@ function saveMapFile(buf) {
   if (flg & 16) { while (buf[hl]) hl++; hl++; }
   if (flg & 2) hl += 2;
   const head = zlib.inflateRawSync(buf.subarray(hl, hl + 65536), { finishFlush: zlib.constants.Z_SYNC_FLUSH });
-  const m = /([^\x00-\x1f]{1,200}\.h3m)\x00/i.exec(head.toString('latin1'));
-  return m ? m[1] : null;
+  const t = head.toString('latin1'); const m = /([^\x00-\x1f]{1,200}\.h3m)\x00/i.exec(t);
+  const L = head.readUInt16LE(0x5f); const name = L > 0 && L < 200 ? t.slice(0x61, 0x61 + L) : null;
+  return { h3m: m ? m[1] : null, name };
 }
+const titleCache = new Map();
+function mapTitle(file) { const st = fs.statSync(file); const k = file + ':' + st.mtimeMs; if (!titleCache.has(k)) { let t = null; try { t = title(fs.readFileSync(file)); } catch (e) {} titleCache.set(k, t); } return titleCache.get(k); }
 function listMaps(dirs) {
   const out = [];
   for (const d of dirs) { if (!d || !fs.existsSync(d)) continue; for (const f of fs.readdirSync(d)) if (/\.h3m$/i.test(f)) { const p = path.join(d, f); const st = fs.statSync(p); out.push({ file: p, name: f.replace(/\.h3m$/i, ''), mtime: st.mtimeMs, size: st.size }); } }
@@ -54,7 +57,7 @@ function createServer(opts) {
     const json = (code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': b.length }); res.end(b); };
     const raw = (buf, type) => { res.writeHead(200, { 'Content-Type': type || 'application/octet-stream', 'Content-Length': buf.length }); res.end(buf); };
     try {
-      if (url === '/api/info') return json(200, Object.assign({ pick: true, dir: opts.getSavesDir(), gameDir: opts.getGameDir(), data: st.gd ? { lods: st.gd.lods.map(l => path.basename(l.file)), defs: st.gd.extra.size } : null, sprites: st.map ? { keys: Object.keys(st.map.atlas.entries).length, found: Object.values(st.map.atlas.entries).filter(Boolean).length } : null, map: st.map ? { file: st.map.file, name: st.map.name, size: st.map.size, levels: st.map.levels } : null }, opts.info ? opts.info() : {}));
+      if (url === '/api/info') return json(200, Object.assign({ pick: true, dir: opts.getSavesDir(), gameDir: opts.getGameDir(), data: st.gd ? { lods: st.gd.lods.map(l => path.basename(l.file)), defs: st.gd.extra.size } : null, sprites: st.map ? { keys: Object.keys(st.map.atlas.entries).length, found: Object.values(st.map.atlas.entries).filter(Boolean).length, missing: Object.entries(st.map.atlas.entries).filter(e => !e[1]).map(e => e[0]) } : null, map: st.map ? { file: st.map.file, name: st.map.name, size: st.map.size, levels: st.map.levels } : null }, opts.info ? opts.info() : {}));
       if (url === '/api/maps') return json(200, { gameDir: opts.getGameDir(), maps: listMaps([opts.getGameDir() && path.join(opts.getGameDir(), 'Maps')].concat(opts.getExtraMapDirs ? opts.getExtraMapDirs() : [])) });
       if (url === '/api/map/open') { const file = u.searchParams.get('file'); if (!file || !fs.existsSync(file)) return json(404, { error: 'map file not found' }); const m = openMap(file); return json(200, { name: m.name, size: m.size, levels: m.levels, file }); }
       if (url.startsWith('/api/map/')) {
@@ -76,8 +79,10 @@ function createServer(opts) {
       if (url.startsWith('/api/use/')) { const d = normSaves(url.slice('/api/use/'.length)); if (!fs.existsSync(d)) return json(404, { error: 'missing' }); opts.setSavesDir(d); return json(200, { dir: d }); }
       if (url === '/api/saves') { const d = normSaves(opts.getSavesDir()); return json(200, { dir: d || '', saves: d ? opts.listSaves(d) : [] }); }
       if (url === '/api/savemap') { const d = opts.getSavesDir(); const rel = u.searchParams.get('file') || ''; const p = path.normalize(path.join(d || '', rel)); if (!d || !p.startsWith(path.normalize(d)) || !fs.existsSync(p)) return json(404, { error: 'not found' });
-        const h3m = saveMapFile(fs.readFileSync(p)); const maps = listMaps([opts.getGameDir() && path.join(opts.getGameDir(), 'Maps')].concat(opts.getExtraMapDirs ? opts.getExtraMapDirs() : []));
-        const hit = h3m ? maps.find(m => path.basename(m.file).toLowerCase() === h3m.toLowerCase()) : null; return json(200, { h3m, mapFile: hit ? hit.file : null, mapName: hit ? hit.name : null }); }
+        const { h3m, name } = saveMapFile(fs.readFileSync(p)); const maps = listMaps([opts.getGameDir() && path.join(opts.getGameDir(), 'Maps')].concat(opts.getExtraMapDirs ? opts.getExtraMapDirs() : []));
+        let hit = h3m ? maps.find(m => path.basename(m.file).toLowerCase() === h3m.toLowerCase()) : null;
+        if (!hit && name) { const same = maps.filter(m => mapTitle(m.file) === name); if (same.length === 1) hit = same[0]; else if (same.length > 1) hit = same.sort((a, b) => b.mtime - a.mtime)[0]; }
+        return json(200, { h3m, name, mapFile: hit ? hit.file : null, mapName: hit ? hit.name : null }); }
       if (url.startsWith('/api/save/')) { const d = opts.getSavesDir(); if (!d) return json(404, { error: 'no folder' }); const p = path.normalize(path.join(d, url.slice('/api/save/'.length))); if (!p.startsWith(path.normalize(d)) || !fs.existsSync(p)) return json(404, { error: 'not found' }); return raw(fs.readFileSync(p)); }
       if (url === '/' || url === '/index.html') {
         if (!st.map) { res.writeHead(302, { Location: '/start.html' }); return res.end(); }

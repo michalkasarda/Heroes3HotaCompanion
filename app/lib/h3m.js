@@ -104,6 +104,14 @@ function readObject(r, oid, sub) {
   else if (oid === 104) { info.custom = r.i32(); info.skills = r.u32(); }
   return info;
 }
+// map title only (any HotA sub-version, scripted maps included)
+function title(buf) {
+  const r = new R(zlib.gunzipSync(buf.subarray(0, 65536), { finishFlush: zlib.constants.Z_SYNC_FLUSH }));
+  if (r.u32() !== 0x20) return null;
+  r.u32(); r.u32(); r.u32(); r.u32(); r.bool(); r.bool(); r.u32(); r.u32(); r.i8(); r.bool(); r.bool();
+  const n = r.u32(); for (let i = 0; i < n; i++) { r.s(); r.i32(); r.u8(); }
+  r.bool(); r.i32(); r.bool(); return r.s();
+}
 function parse(buf) {
   const r = new R(zlib.gunzipSync(buf));
   if (r.u32() !== 0x20) throw new Error('Not a HotA map (format id)');
@@ -140,4 +148,4 @@ function parse(buf) {
   const events = r.u32();
   return { size, levels, name, desc, players, terrain, templates, objects, events };
 }
-module.exports = { parse };
+module.exports = { title, parse };
