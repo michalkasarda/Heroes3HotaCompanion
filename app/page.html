@@ -71,6 +71,12 @@ h1{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacin
 .skl .n{font-weight:500;color:#9be37a;} #spllist .n{color:#c9a2ff;}
 .skl .m{grid-column:1/3;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;display:flex;gap:8px;}
 .skl li.gone .n{text-decoration:line-through;opacity:.5;}
+.mk.hv{border-color:#e8a24a;display:none;} .mk.hv span{color:#e8a24a;} #view.hv-on .mk.hv.open{display:block;}
+.hv h3{margin:10px 0 4px;font-size:13px;color:var(--gold);display:flex;justify-content:space-between;} .hv h3 .st{font-size:11px;color:var(--muted);font-weight:500;}
+.hv .it{display:grid;grid-template-columns:12px 1fr auto;gap:6px;align-items:center;font-size:12.5px;padding:3px 4px;border-radius:4px;cursor:pointer;} .hv .it:hover{background:rgba(255,255,255,.05);}
+.hv .it .dot{width:9px;height:9px;border-radius:50%;background:#e8a24a;} .hv .it.done .dot{background:#6fd36f;} .hv .it.done .n{opacity:.55;}
+.hv .it .w{color:var(--muted);font-size:11px;} .hv .it .go{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;padding:0 6px;} .hv .it .go:hover{color:var(--gold);border-color:var(--gold);}
+.hv .sum{font-size:12px;color:var(--text);margin:6px 0 2px;} .hv .grid{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:12px;margin-bottom:6px;} .hv .grid b{color:var(--gold);text-align:right;}
 .mk.sk{border-color:#9be37a;} .mk.sk span{color:#9be37a;} .mk.sk span i{font-style:normal;color:var(--text);opacity:.8;}
 .mk.spl{border-color:#c9a2ff;} .mk.spl span{color:#c9a2ff;} .mk.spl span i{font-style:normal;color:var(--text);opacity:.8;}
 #view.sk-off .mk.sk{display:none;} #view.spl-off .mk.spl{display:none;}
@@ -114,7 +120,7 @@ h1{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacin
 .zoom button{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:18px;border-radius:6px;cursor:pointer;}
 .zoom button:focus-visible{outline:2px solid var(--focus);}
 
-.tabs{display:flex;border-bottom:1px solid var(--line);}
+.tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line);} .tabs button{flex:1 1 22%;}
 .tabs button{flex:1;padding:9px 6px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;}
 .tabs button[aria-selected="true"]{color:var(--gold);border-bottom-color:var(--gold);}
 .tabs button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
@@ -256,6 +262,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
     <button role="tab" id="tab-cb" aria-selected="false">Combos</button>
     <button role="tab" id="tab-route" aria-selected="false">Route</button>
     <button role="tab" id="tab-po" aria-selected="false">Portals</button>
+    <button role="tab" id="tab-hv" aria-selected="false">Heroes</button>
     
   </div>
   <div class="pane" id="pane-art">
@@ -306,6 +313,9 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       <div class="btns"><button class="btn primary" id="b-go">Find route</button><button class="btn" id="b-swap">Swap</button><button class="btn" id="b-clear">Clear</button></div>
       <div class="res" id="r-res" hidden></div>
     </div>
+  </div>
+  <div class="pane" id="pane-hv" hidden>
+    <div class="scroll hv" id="hvbox"><p class="hint2">Load a save to see, for each of your heroes, which once-per-hero bonuses are still open.</p></div>
   </div>
   <div class="pane" id="pane-po" hidden>
     <div class="controls">
@@ -730,9 +740,9 @@ function drawObjects() {
 const UNTRACK_CLS = new Set([26, 34, 70, 8, 36]);
 
 // ===== tabs =====
-const panes = {art: 'pane-art', sk: 'pane-sk', spl: 'pane-spl', cb: 'pane-cb', route: 'pane-route', po: 'pane-po'};
+const panes = {art: 'pane-art', sk: 'pane-sk', spl: 'pane-spl', cb: 'pane-cb', route: 'pane-route', po: 'pane-po', hv: 'pane-hv'};
 function showTab(t) { if (!panes[t]) return; for (const k in panes) { document.getElementById(panes[k]).hidden = k !== t; document.getElementById('tab-' + k).setAttribute('aria-selected', k === t); } }
-for (const k in panes) document.getElementById('tab-' + k).addEventListener('click', () => showTab(k));
+for (const k in panes) document.getElementById('tab-' + k).addEventListener('click', () => { showTab(k); paintHvMarks(); });
 
 // ===== nav data =====
 const NAV = DATA.nav;
@@ -1015,6 +1025,58 @@ function refreshCombos() {
   for (const sp of box.querySelectorAll('.src')) sp.addEventListener('click', e => { e.stopPropagation(); goTo(+sp.dataset.x, +sp.dataset.y, +sp.dataset.z); });
 }
 
+// ===== per-hero bonuses =====
+const HVK = DATA.perHero, HVO = DATA.perHeroObjs;
+const TOWN_BONUS = {2: ['Wall of Knowledge', '+1 Knowledge'], 3: ['Order of Fire', '+1 Spell Power'], 5: ['Academy of Battle Scholars', '+1000 experience'], 6: ['Hall of Valhalla', '+1 Attack'], 7: ['Cage of Warlords', '+1 Defense']};
+const FACN = ['Castle', 'Rampart', 'Tower', 'Inferno', 'Necropolis', 'Dungeon', 'Stronghold', 'Fortress', 'Conflux', 'Cove', 'Factory', 'Bulwark'];
+const hvmk = HVO.map(e => { const el = document.createElement('div'); el.className = 'mk hv' + (e.x > N - 12 ? ' flip' : ''); el.style.left = e.x * 32 + 'px'; el.style.top = e.y * 32 + 'px'; const sp = document.createElement('span'); sp.textContent = HVK[e.k].n; el.appendChild(sp); marks[e.z ? 'ug' : 'ow'].appendChild(el); return el; });
+let hvHero = null; try { hvHero = +localStorage.getItem('hc-hvhero') || null; } catch (e) {}
+let hvHide = false; try { hvHide = localStorage.getItem('hc-hvhide') === '1'; } catch (e) {}
+function hvState() {
+  if (!SAVE || !gameOn()) return null;
+  const mine = SAVE.heroArts.filter(h => h.owner === curPlayer).sort((a, b) => a.name.localeCompare(b.name));
+  if (!mine.length) return {mine};
+  const h = mine.find(x => x.id === hvHero) || mine[0];
+  const visited = e => ((h.visit[e.k] >>> e.i) & 1) === 1;
+  const towns = NAV.towns.map((t, i) => ({...t, i, fac: SAVE.townFac[i]})).filter(t => TOWN_BONUS[t.fac]).map(t => ({...t, done: ((h.towns[t.i >> 5] >>> (t.i & 31)) & 1) === 1}));
+  return {mine, h, visited, towns};
+}
+function paintHvMarks() {
+  const st = hvState(), on = !!(st && st.h) && !document.getElementById('pane-hv').hidden;
+  view.classList.toggle('hv-on', on);
+  HVO.forEach((e, j) => hvmk[j].classList.toggle('open', on && !st.visited(e) && !gone(e.oi)));
+}
+function refreshHeroes() {
+  const box = document.getElementById('hvbox'); const st = hvState();
+  if (!st) { box.innerHTML = '<p class="hint2">Load a save and switch to Game mode to see, for each of your heroes, which once-per-hero bonuses are still open.</p>'; paintHvMarks(); return; }
+  if (!st.h) { box.innerHTML = `<p class="hint2">${PLAYER[curPlayer]} has no heroes in this save.</p>`; paintHvMarks(); return; }
+  const h = st.h, pos = SAVE.heroes.find(x => x.id === h.id);
+  const open = {}; const add = (b, n) => { open[b] = (open[b] || 0) + n; };
+  let html = `<div class="row"><select class="sel" id="hv-sel" aria-label="Hero">${st.mine.map(x => `<option value="${x.id}"${x.id === h.id ? ' selected' : ''}>${x.name}</option>`).join('')}</select><label><input type="checkbox" id="hv-hide"${hvHide ? ' checked' : ''}> Hide visited</label></div>`;
+  const item = (x, y, z, name, done, extra) => (hvHide && done) ? '' : `<div class="it${done ? ' done' : ''}" data-x="${x}" data-y="${y}" data-z="${z}"><span class="dot"></span><span class="n">${name}<br><span class="w">${z ? 'Underground' : 'Surface'} ${x}, ${y}${extra ? ' \u00b7 ' + extra : ''}${done ? ' \u00b7 visited' : ''}</span></span>${done ? '<span></span>' : '<button class="go" title="Route from this hero">&rarr;</button>'}</div>`;
+  let body = '';
+  HVK.forEach((kd, k) => {
+    const list = HVO.filter(e => e.k === k && !gone(e.oi)); if (!list.length) return;
+    const done = list.filter(st.visited).length; if (list.length - done) add(kd.b, list.length - done);
+    body += `<h3><span>${kd.n} <span class="st">${kd.b}</span></span><span class="st">${done} / ${list.length}</span></h3>` + list.map(e => item(e.x, e.y, e.z, kd.n, st.visited(e))).join('');
+  });
+  if (st.towns.length) {
+    const done = st.towns.filter(t => t.done).length;
+    body += `<h3><span>Town buildings <span class="st">once per hero, building must be built</span></span><span class="st">${done} / ${st.towns.length}</span></h3>` + st.towns.map(t => item(t.x, t.y, t.z, `${t.n} (${FACN[t.fac]})`, t.done, TOWN_BONUS[t.fac][0] + ', ' + TOWN_BONUS[t.fac][1])).join('');
+    for (const t of st.towns) if (!t.done) add(TOWN_BONUS[t.fac][1] + ' (town)', 1);
+  }
+  const sum = Object.entries(open).map(([b, n]) => `<b>${n}\u00d7</b><span>${b}</span>`).join('');
+  html += `<p class="sum">${pos ? `${h.name} at ${pos.z ? 'Underground' : 'Surface'} ${pos.x}, ${pos.y}.` : `${h.name} is not on the map (in a town or garrison).`} Still open:</p>${sum ? `<div class="grid">${sum}</div>` : '<p class="hint2">nothing</p>'}` + body;
+  box.innerHTML = html;
+  document.getElementById('hv-sel').addEventListener('change', e => { hvHero = +e.target.value; try { localStorage.setItem('hc-hvhero', hvHero); } catch (x) {} refreshHeroes(); });
+  document.getElementById('hv-hide').addEventListener('change', e => { hvHide = e.target.checked; try { localStorage.setItem('hc-hvhide', hvHide ? '1' : '0'); } catch (x) {} refreshHeroes(); });
+  for (const el of box.querySelectorAll('.it')) {
+    el.addEventListener('click', () => goTo(+el.dataset.x, +el.dataset.y, +el.dataset.z));
+    const b = el.querySelector('.go'); if (b) b.addEventListener('click', ev => { ev.stopPropagation(); const g = {x: +el.dataset.x, y: +el.dataset.y, z: +el.dataset.z}; if (pos) setStart({x: pos.x, y: pos.y, z: pos.z}); setGoal(g); });
+  }
+  paintHvMarks();
+}
+
 // ===== portals UI =====
 const plist = document.getElementById('plist'), pq = document.getElementById('pq');
 const PORTAL = NAV.sp.map((p, i) => ({...p, i})).filter(p => /mono|subGate|whirl/.test(p.k));
@@ -1098,9 +1160,10 @@ function parseSave(buf) {
     if (ok) { ms = s; break; }
   }
   if (ms < 0) throw new Error('Map tiles not found in save. Is this a save of The Mysterious Island?');
-  const presentSave = new Uint8Array(70000), heroTiles = [];
+  const presentSave = new Uint8Array(70000), heroTiles = [], tileOff = new Int32Array(NT);
   let q = ms;
   for (let i = 0; i < NT; i++) {
+    tileOff[i] = q;
     const cls = u16(q + 8);
     if (cls === 34) heroTiles.push({id: u32(q + 14), x: (i % NN) % N, y: Math.floor((i % NN) / N), z: i >= NN ? 1 : 0});
     const n = u32(q + 18);
@@ -1200,7 +1263,11 @@ function parseSave(buf) {
     }
     fog = new Uint8Array(NT); for (let i = 0; i < NT; i++) fog[i] = raw[best[1] + 2 * i];
   }
-  const heroArts = Object.entries(hinfo).map(([id, h]) => ({id: +id, owner: h.owner, name: h.name, arts: h.arts}));
+  // once-per-hero visit fields in each hero record: ten classic 32-bit sets at +53, HotA Colosseum +1072, Hermit's Shack +1084, Gazebo +1088; towns whose bonus building the hero used: 48-bit set at +1062 (town order = map order)
+  const HV_OFF = [53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 1072, 1084, 1088];
+  const heroArts = Object.entries(hinfo).map(([id, h]) => ({id: +id, owner: h.owner, name: h.name, arts: h.arts, visit: HV_OFF.map(o => u32(h.t + o)), towns: [u32(h.t + 1062), u16(h.t + 1066)]}));
+  // town factions as resolved in the game (random towns included): first tile at or above the entrance that holds a town
+  const townFac = NAV.towns.map(t => { for (const [dx, dy] of [[0, 0], [0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0]]) { const x = t.x + dx, y = t.y + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue; const qq = tileOff[t.z * NN + y * N + x]; if (u16(qq + 8) === 98) return u16(qq + 10); } return -1; });
   // keys: 8 bytes after the last hero record, one per key colour, bit per player; a constant follows them
   let keys = null;
   { let last = -1; for (const h of Object.values(hinfo)) if (h.t > last) last = h.t;
@@ -1211,7 +1278,7 @@ function parseSave(buf) {
     const n = NAV.mon.length, first = p - 16 - 33 * (n - 1);
     if (p > 0 && first > 0) { let ok = 0; for (let i = 0; i < n; i++) if (u32(first + 33 * i + 16) === 100) ok++;
       if (ok > 0.9 * n) { count = new Map(); for (let i = 0; i < n; i++) count.set(NAV.mon[i].oi, u32(first + 33 * monRank[i])); } } }
-  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count, matched};
+  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count, matched, townFac};
 }
 const OPOS = Uint8Array.from(atob(DATA.opos), c => c.charCodeAt(0));
 function cp1251(str) { const out = []; for (const ch of str) { const c = ch.charCodeAt(0); out.push(c < 128 ? c : 63); } return out; }
@@ -1239,7 +1306,7 @@ function applyGame() {
   for (const a of arts) { const el = mkEls.get(a.i); el.classList.toggle('gone', on && (gone(a.oi) || seerDone(a))); if (a.r === 1) { const sp = el.querySelector('span'); const nm = labelOf(a); if (sp.textContent !== nm) sp.textContent = nm; } }
   for (const el of heroMk) el.hidden = on && !revealed(+el.dataset.x, +el.dataset.y, +el.dataset.z);
   drawOwners();
-  paintGuards(); refresh(); refreshQuests(); refreshSkills(); refreshCombos(); drawFog(); requestDraw();
+  paintGuards(); refresh(); refreshQuests(); refreshSkills(); refreshCombos(); refreshHeroes(); drawFog(); requestDraw();
   fogC.ow.classList.toggle('cur', level === 'ow'); fogC.ug.classList.toggle('cur', level === 'ug');
   if (start && goal) findRoute();
 }

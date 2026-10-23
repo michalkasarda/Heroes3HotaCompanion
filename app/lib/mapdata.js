@@ -177,11 +177,24 @@ function build(m, gd) {
   const tile0 = Buffer.alloc(600 * 6); for (let i = 0; i < 600; i++) T.copy(tile0, 6 * i, 7 * i, 7 * i + 6);
   const opos = Buffer.alloc(3 * O.length); O.forEach((o, i) => { opos[3 * i] = o.pos[0]; opos[3 * i + 1] = o.pos[1]; opos[3 * i + 2] = o.pos[2]; });
   const hotaIcons = {}; try { const have = new Set(fs.readdirSync(path.join(LIB, '..', 'hota', 'icons')).map(f => f.toLowerCase())); for (const [ident, idx] of Object.entries(MAP.artifacts)) if (have.has(ident.toLowerCase() + '.png')) hotaIcons[idx] = fs.readdirSync(path.join(LIB, '..', 'hota', 'icons')).find(f => f.toLowerCase() === ident.toLowerCase() + '.png'); } catch (e) {}
+  const perHeroObjs = perHeroList(O, entry);
   const data = {
     size: N, tile: 1008, name: m.name, levels: m.levels, arts, terrain: T.toString('base64'), hotaIcons, tile0: tile0.toString('base64'), nobj: O.length, opos: opos.toString('base64'),
     artnames: AN, artdesc: AD, skills, combos: COMBOS,
     nav: { own, seers, counts, grid, sp, mon, towns, keys },
+    perHero: PERHERO.map(([id, sub, n, b]) => ({ n, b })), perHeroObjs,
   };
   return { data, oinfo, defNames, placements, names };
+}
+// once-per-hero objects; a hero's visit field for each kind is a bit set indexed by the object's rank in (level, row, column) order
+const PERHERO = [[100, null, 'Learning Stone', '+1000 experience'], [23, null, 'Marletto Tower', '+1 Defense'], [32, null, 'Garden of Revelation', '+1 Knowledge'], [51, null, 'Mercenary Camp', '+1 Attack'], [61, null, 'Star Axis', '+1 Spell Power'], [102, null, 'Tree of Knowledge', '+1 level'], [41, null, 'Library of Enlightenment', '+2 all primary skills'], [4, null, 'Arena', '+2 Attack or Defense'], [47, null, 'School of Magic', '+1 Power or Knowledge'], [107, null, 'School of War', '+1 Attack or Defense'], [144, 2, 'Colosseum of the Magi', '+2 Power or Knowledge'], [144, 5, "Hermit's Shack", 'upgrades a secondary skill'], [144, 6, 'Gazebo', '+2000 experience for gold']];
+function perHeroList(O, entry) {
+  const out = [];
+  PERHERO.forEach(([id, sub], k) => {
+    const l = []; O.forEach((o, oi) => { if (o.t.id === id && (sub === null || o.t.sub === sub)) l.push({ o, oi }); });
+    l.sort((a, b) => a.o.pos[2] - b.o.pos[2] || a.o.pos[1] - b.o.pos[1] || a.o.pos[0] - b.o.pos[0]);
+    l.forEach(({ o, oi }, i) => { const e = entry(o); out.push({ k, i, oi, x: e[0], y: e[1], z: e[2] }); });
+  });
+  return out;
 }
 module.exports = { build, tsv, loadNames };
