@@ -32,6 +32,22 @@ function saveMapFile(buf) {
 }
 const titleCache = new Map();
 function mapTitle(file) { const st = fs.statSync(file); const k = file + ':' + st.mtimeMs; if (!titleCache.has(k)) { let t = null; try { t = title(fs.readFileSync(file)); } catch (e) {} titleCache.set(k, t); } return titleCache.get(k); }
+// hero portraits: classic ones are PCX files in the game's LOD archives (8-bit with palette, or 24-bit BGR), HotA ones are bundled PNGs
+const PORTRAITS = JSON.parse(fs.readFileSync(path.join(__dirname, 'hero_portraits.json')));
+const CRC = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return t; })();
+function crc32(b) { let c = -1; for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+function png(w, h, rgb) {
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type, 'latin1'), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc32(td)); return Buffer.concat([len, td, c]); };
+  const hdr = Buffer.alloc(13); hdr.writeUInt32BE(w, 0); hdr.writeUInt32BE(h, 4); hdr[8] = 8; hdr[9] = 2;
+  const rows = Buffer.alloc((w * 3 + 1) * h); for (let y = 0; y < h; y++) rgb.copy(rows, y * (w * 3 + 1) + 1, y * w * 3, (y + 1) * w * 3);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', hdr), chunk('IDAT', zlib.deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
+}
+function pcxToPng(b) {
+  const size = b.readUInt32LE(0), w = b.readUInt32LE(4), h = b.readUInt32LE(8), rgb = Buffer.alloc(w * h * 3);
+  if (size === w * h) { const pal = 12 + size; for (let i = 0; i < w * h; i++) { const c = b[12 + i]; rgb[3 * i] = b[pal + 3 * c]; rgb[3 * i + 1] = b[pal + 3 * c + 1]; rgb[3 * i + 2] = b[pal + 3 * c + 2]; } }
+  else for (let i = 0; i < w * h; i++) { rgb[3 * i] = b[12 + 3 * i + 2]; rgb[3 * i + 1] = b[12 + 3 * i + 1]; rgb[3 * i + 2] = b[12 + 3 * i]; }
+  return png(w, h, rgb);
+}
 function listMaps(dirs) {
   const out = [];
   for (const d of dirs) { if (!d || !fs.existsSync(d)) continue; for (const f of fs.readdirSync(d)) if (/\.h3m$/i.test(f)) { const p = path.join(d, f); const st = fs.statSync(p); out.push({ file: p, name: f.replace(/\.h3m$/i, ''), mtime: st.mtimeMs, size: st.size }); } }
@@ -58,6 +74,7 @@ function createServer(opts) {
     const raw = (buf, type) => { res.writeHead(200, { 'Content-Type': type || 'application/octet-stream', 'Content-Length': buf.length }); res.end(buf); };
     try {
       if (url === '/api/info') return json(200, Object.assign({ pick: true, dir: opts.getSavesDir(), gameDir: opts.getGameDir(), data: st.gd ? { lods: st.gd.lods.map(l => path.basename(l.file)), defs: st.gd.extra.size } : null, sprites: st.map ? { keys: Object.keys(st.map.atlas.entries).length, found: Object.values(st.map.atlas.entries).filter(Boolean).length, missing: Object.entries(st.map.atlas.entries).filter(e => !e[1]).map(e => e[0]) } : null, map: st.map ? { file: st.map.file, name: st.map.name, size: st.map.size, levels: st.map.levels } : null }, opts.info ? opts.info() : {}));
+      if (url.startsWith('/api/portrait/')) { const f = PORTRAITS[url.slice(14)]; if (!f) return json(404, {}); if (f.startsWith('hota:')) return raw(fs.readFileSync(path.join(opts.appDir, 'hota', 'portraits', f.slice(5) + '.png')), 'image/png'); const gd = gameData(); const b = gd && gd.get(f); return b ? raw(pcxToPng(b), 'image/png') : json(404, {}); }
       if (url === '/api/maps') return json(200, { gameDir: opts.getGameDir(), maps: listMaps([opts.getGameDir() && path.join(opts.getGameDir(), 'Maps')].concat(opts.getExtraMapDirs ? opts.getExtraMapDirs() : [])) });
       if (url === '/api/map/open') { const file = u.searchParams.get('file'); if (!file || !fs.existsSync(file)) return json(404, { error: 'map file not found' }); const m = openMap(file); return json(200, { name: m.name, size: m.size, levels: m.levels, file }); }
       if (url.startsWith('/api/map/')) {

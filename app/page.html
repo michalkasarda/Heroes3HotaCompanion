@@ -76,6 +76,8 @@ h1{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacin
 .hv .it{display:grid;grid-template-columns:12px 1fr auto;gap:6px;align-items:center;font-size:12.5px;padding:3px 4px;border-radius:4px;cursor:pointer;} .hv .it:hover{background:rgba(255,255,255,.05);}
 .hv .it .dot{width:9px;height:9px;border-radius:50%;background:#e8a24a;} .hv .it.done .dot{background:#6fd36f;} .hv .it.done .n{opacity:.55;}
 .hv .it .w{color:var(--muted);font-size:11px;} .hv .it.dim .dot{background:#777;} .hv .it.dim .n{opacity:.6;} .hv .it .go{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;padding:0 6px;} .hv .it .go:hover{color:var(--gold);border-color:var(--gold);}
+.hvpick{position:relative;margin-bottom:6px;} .hvbtn{display:flex;align-items:center;gap:8px;width:100%;padding:4px 8px 4px 4px;background:var(--panel2,#1d1712);border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit;font-size:13px;cursor:pointer;text-align:left;} .hvbtn:hover{border-color:var(--gold);} .hvbtn .car{margin-left:auto;color:var(--muted);}
+.hvpick img{width:48px;height:32px;border-radius:3px;flex:none;} .hvmenu{position:absolute;left:0;right:0;top:100%;z-index:30;margin:2px 0 0;padding:4px;list-style:none;background:#1a140f;border:1px solid var(--gold);border-radius:6px;max-height:360px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);} .hvmenu li{display:flex;align-items:center;gap:8px;padding:3px 4px;border-radius:4px;cursor:pointer;font-size:13px;} .hvmenu li:hover,.hvmenu li.sel{background:rgba(232,191,90,.12);} .hvmenu li .w{margin-left:auto;color:var(--muted);font-size:11px;}
 .hv .sum{font-size:12px;color:var(--text);margin:6px 0 2px;} .hv .grid{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:12px;margin-bottom:6px;} .hv .grid b{color:var(--gold);text-align:right;}
 .mk.sk{border-color:#9be37a;} .mk.sk span{color:#9be37a;} .mk.sk span i{font-style:normal;color:var(--text);opacity:.8;}
 .mk.spl{border-color:#c9a2ff;} .mk.spl span{color:#c9a2ff;} .mk.spl span i{font-style:normal;color:var(--text);opacity:.8;}
@@ -161,6 +163,8 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
 #qlist li{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;padding:6px 8px;border-radius:6px;align-items:start;cursor:pointer;}
 #qlist li:hover{background:var(--panel2);}
 #qlist li.done{opacity:.55;}
+#qlist li.qsec{display:block;cursor:default;padding:10px 8px 4px;color:var(--gold);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;} #qlist li.qsec:hover{background:none;}
+#qlist .rw{color:var(--gold);} #qlist .sp{width:13px;}
 #qlist li input{margin-top:3px;accent-color:var(--gold);}
 #qlist .q{font-size:12.5px;}
 #qlist .m{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;}
@@ -355,7 +359,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       <p class="hint2 tiny" style="margin:0">Per player colour. In Game mode keys and passed guards come from the save; tick the rest yourself. Click a guard on the map to toggle.</p>
       <div class="row"><label><input type="checkbox" id="o-keys" checked> Routing uses my keys</label><label><input type="checkbox" id="o-quests" checked> Routing uses quest progress</label><label><input type="checkbox" id="f-gd" checked> Show guards</label></div>
       <div class="keys" id="keys"></div>
-      <div class="search"><input id="qq" type="search" placeholder="Filter quest guards (condition, coords)" autocomplete="off" aria-label="Filter quest guards"></div>
+      <div class="search"><input id="qq" type="search" placeholder="Filter quests (condition, reward, name, coords)" autocomplete="off" aria-label="Filter quests"></div>
       <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
     </div>
     <ul id="qlist" role="listbox" aria-label="Quest guards"></ul>
@@ -808,19 +812,37 @@ function syncKeys() { for (const inp of keysEl.querySelectorAll('input')) { cons
 const qlist = document.getElementById('qlist'), qq = document.getElementById('qq'), qhide = document.getElementById('q-hide');
 const QUESTS = GUARDS.filter(p => p.k === 'questGuard' || p.k === 'questGate').sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
 function refreshQuests() {
-  const t = qq.value.trim().toLowerCase(); qlist.innerHTML = ''; let n = 0, done = 0;
+  const t = qq.value.trim().toLowerCase(); qlist.innerHTML = ''; let n = 0, done = 0, seerTotal = 0;
+  const sec = label => { const li = document.createElement('li'); li.className = 'qsec'; li.textContent = label; qlist.appendChild(li); };
+  sec('One-time quests');
   for (const p of QUESTS) {
     const a = qstate(p); if (a === 'impossible') continue;
     const g = gone(p.oi) || a === 'done'; const d = g || !!prog.done[spKey(p)]; if (d) done++;
     const txt = `${p.q} ${p.x} ${p.y} ${p.z ? 'underground' : 'surface'} ${p.k === 'questGate' ? 'gate' : 'guard'}`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) continue; n++;
     const li = document.createElement('li'); li.className = d ? 'done' : ''; li.dataset.i = p.i;
-    li.innerHTML = `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done"><span class="q">${p.q}</span><span class="m" style="grid-column:2">${p.k === 'questGate' ? 'Quest Gate' : 'Quest Guard'} (${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'}${gone(p.oi) ? ' \u00b7 passed (from save)' : a === 'done' ? ' \u00b7 yours' : ''}</span>`;
+    li.innerHTML = `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done"><span class="q">${p.q} <span class="rw">&rarr; opens the passage</span></span><span class="m" style="grid-column:2">${p.k === 'questGate' ? 'Quest Gate' : 'Quest Guard'} (${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'}${gone(p.oi) ? ' \u00b7 passed (from save)' : a === 'done' ? ' \u00b7 yours' : ''}</span>`;
     li.querySelector('input').addEventListener('change', e => { e.stopPropagation(); setDone(p, e.target.checked); });
     li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (p.z ? 'ug' : 'ow')) setLevel(p.z ? 'ug' : 'ow'); flyTo(p.x, p.y, Math.max(s, 1.2)); gmk.get(p.i).classList.add('active'); setTimeout(() => gmk.get(p.i).classList.remove('active'), 2500); });
     qlist.appendChild(li);
   }
-  const total = QUESTS.filter(p => qstate(p) !== 'impossible').length, fromSave = QUESTS.filter(p => gone(p.oi)).length;
+  // Seer's Huts: one-time quests (done from the save when this colour completed the hut, or ticked by hand), then repeatable ones
+  const seerItem = (sq, oneTime) => {
+    if (/^be player /.test(sq.q) && sq.q !== 'be player ' + PLAYER[curPlayer]) return;
+    const g = oneTime && !!(seerMask(sq.oi) >> curPlayer & 1), key = 'seer:' + sq.oi + ':' + sq.i, d = oneTime && (g || !!prog.done[key]);
+    if (oneTime) { seerTotal++; if (d) done++; }
+    const txt = `${sq.q} ${sq.r} ${sq.n} ${sq.x} ${sq.y} ${sq.z ? 'underground' : 'surface'} seer`.toLowerCase();
+    if ((t && !txt.includes(t)) || (qhide.checked && d)) return; n++;
+    const li = document.createElement('li'); li.className = d ? 'done' : '';
+    li.innerHTML = `${oneTime ? `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done">` : '<span class="sp"></span>'}<span class="q">${sq.q} <span class="rw">&rarr; ${sq.r}</span></span><span class="m" style="grid-column:2">Seer's Hut${sq.n ? ' ' + sq.n : ''} (${sq.x}, ${sq.y}) ${sq.z ? 'Underground' : 'Surface'}${g ? ' \u00b7 done (from save)' : ''}</span>`;
+    const cb = li.querySelector('input'); if (cb) cb.addEventListener('change', e => { e.stopPropagation(); prog.done[key] = e.target.checked; if (!e.target.checked) delete prog.done[key]; saveProg(); refreshQuests(); });
+    li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (sq.z ? 'ug' : 'ow')) setLevel(sq.z ? 'ug' : 'ow'); flyTo(sq.x, sq.y, Math.max(s, 1.2)); });
+    qlist.appendChild(li);
+  };
+  for (const sq of DATA.seerQ) if (!sq.rep) seerItem(sq, true);
+  sec('Repeatable quests');
+  for (const sq of DATA.seerQ) if (sq.rep) seerItem(sq, false);
+  const total = QUESTS.filter(p => qstate(p) !== 'impossible').length + seerTotal, fromSave = QUESTS.filter(p => gone(p.oi)).length;
   document.getElementById('qcount').textContent = `${done} done / ${total}` + (fromSave ? ` (${fromSave} from save)` : '') + (QUESTS.length - total ? `, ${QUESTS.length - total} for other players hidden` : '');
 }
 function setDone(p, v) { prog.done[spKey(p)] = v; if (!v) delete prog.done[spKey(p)]; saveProg(); paintGuards(); refreshQuests(); if (start && goal) findRoute(); }
@@ -1055,7 +1077,8 @@ function refreshHeroes() {
   if (!st.h) { box.innerHTML = `<p class="hint2">${PLAYER[curPlayer]} has no heroes in this save.</p>`; paintHvMarks(); return; }
   const h = st.h, pos = SAVE.heroes.find(x => x.id === h.id);
   const open = {}; const add = (b, n) => { open[b] = (open[b] || 0) + n; };
-  let html = `<div class="row"><select class="sel" id="hv-sel" aria-label="Hero">${st.mine.map(x => `<option value="${x.id}"${x.id === h.id ? ' selected' : ''}>${x.name}</option>`).join('')}</select><label><input type="checkbox" id="hv-hide"${hvHide ? ' checked' : ''}> Hide visited</label></div>`;
+  const where = x => { const p = SAVE.heroes.find(y => y.id === x.id); return p ? (p.z ? 'Underground ' : 'Surface ') + p.x + ', ' + p.y : 'in town'; };
+  let html = `<div class="hvpick"><button class="hvbtn" id="hv-btn" aria-haspopup="listbox"><img src="/api/portrait/${h.id}" alt=""><span>${h.name}</span><span class="car">&#9662;</span></button><ul class="hvmenu" id="hv-menu" role="listbox" hidden>${st.mine.map(x => `<li role="option" data-id="${x.id}"${x.id === h.id ? ' class="sel"' : ''}><img src="/api/portrait/${x.id}" alt=""><span>${x.name}</span><span class="w">${where(x)}</span></li>`).join('')}</ul></div><div class="row"><label><input type="checkbox" id="hv-hide"${hvHide ? ' checked' : ''}> Hide visited</label></div>`;
   const item = (x, y, z, name, done, extra, dim) => (hvHide && (done || dim)) ? '' : `<div class="it${done ? ' done' : ''}${dim ? ' dim' : ''}" data-x="${x}" data-y="${y}" data-z="${z}"><span class="dot"></span><span class="n">${name}<br><span class="w">${z ? 'Underground' : 'Surface'} ${x}, ${y}${extra ? ' \u00b7 ' + extra : ''}${done ? ' \u00b7 visited' : ''}</span></span>${done ? '<span></span>' : '<button class="go" title="Route from this hero">&rarr;</button>'}</div>`;
   let body = '';
   HVK.forEach((kd, k) => {
@@ -1081,7 +1104,9 @@ function refreshHeroes() {
   const sum = Object.entries(open).map(([b, n]) => `<b>${n}\u00d7</b><span>${b}</span>`).join('');
   html += `<p class="sum">${pos ? `${h.name} at ${pos.z ? 'Underground' : 'Surface'} ${pos.x}, ${pos.y}.` : `${h.name} is not on the map (in a town or garrison).`} Still open:</p>${sum ? `<div class="grid">${sum}</div>` : '<p class="hint2">nothing</p>'}` + body;
   box.innerHTML = html;
-  document.getElementById('hv-sel').addEventListener('change', e => { hvHero = +e.target.value; try { localStorage.setItem('hc-hvhero', hvHero); } catch (x) {} refreshHeroes(); });
+  const menu = document.getElementById('hv-menu');
+  document.getElementById('hv-btn').addEventListener('click', e => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+  for (const li of menu.children) li.addEventListener('click', () => { hvHero = +li.dataset.id; try { localStorage.setItem('hc-hvhero', hvHero); } catch (x) {} refreshHeroes(); });
   document.getElementById('hv-hide').addEventListener('change', e => { hvHide = e.target.checked; try { localStorage.setItem('hc-hvhide', hvHide ? '1' : '0'); } catch (x) {} refreshHeroes(); });
   for (const el of box.querySelectorAll('.it')) {
     el.addEventListener('click', () => goTo(+el.dataset.x, +el.dataset.y, +el.dataset.z));
@@ -1089,6 +1114,8 @@ function refreshHeroes() {
   }
   paintHvMarks();
 }
+
+document.addEventListener('click', e => { const m = document.getElementById('hv-menu'); if (m && !m.hidden && !e.target.closest('.hvpick')) m.hidden = true; });
 
 // ===== portals UI =====
 const plist = document.getElementById('plist'), pq = document.getElementById('pq');

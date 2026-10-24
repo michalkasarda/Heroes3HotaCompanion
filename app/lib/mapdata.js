@@ -73,6 +73,9 @@ function build(m, gd) {
     if (t === 10) return { 0: 'be certain hero class', 1: `after day ${(q.day || 0) + 1}`, 2: 'on certain difficulty', 3: 'scripted condition' }[q.sub];
     return 'quest';
   };
+  const SPN = gd.rows('sptraits.txt').map(r => r[0]).filter(s => s && s.trim() && !['Name', 'Adventure Spells', 'Combat Spells', 'Creature Abilities'].includes(s));
+  const reward = q => { const a = q.ra, b = q.rb; switch (q.rt) { case 1: return a + ' experience'; case 2: return a + ' spell points'; case 3: return (a > 0 ? '+' : '') + a + ' morale'; case 4: return (a > 0 ? '+' : '') + a + ' luck'; case 5: return b + ' ' + RES[a]; case 6: return '+' + b + ' ' + PRIM[a]; case 7: return ['', 'Basic', 'Advanced', 'Expert'][b] + ' ' + (SK[a] || 'skill #' + a); case 8: return art(q.reward_art) || 'artifact'; case 9: return 'spell ' + (SPN[a] || '#' + a); case 10: return (cre(a, b) || b + ' creatures'); default: return 'nothing'; } };
+  const seerQ = [];
   const entry = o => { const [x, y, z] = o.pos; for (let k = 0; k < 6; k++) for (let j = 0; j < 8; j++) if ((o.t.visit[k] >> j) & 1) return [x - (7 - j), y - (5 - k), z]; return [x, y, z]; };
 
   // ---- artifacts on the ground + rewards ----
@@ -128,7 +131,9 @@ function build(m, gd) {
     else if ((id >= 17 && id <= 20) || (id >= 216 && id <= 218)) own.push({ oi, k: 'dwelling', x: e[0], y: e[1], z, n: 'Dwelling', o: ow, rnd: id >= 216 });
     else if (id === 33 || id === 219) own.push({ oi, k: 'garrison', x: e[0], y: e[1], z, n: 'Garrison', o: ow });
     else if (id === 98 || id === 77) own.push({ oi, k: 'town', x: e[0], y: e[1], z, n: o.name || 'Town', o: ow });
-    else if (id === 83) { const qs = o.quests.concat(o.repeat); const t = qs.length && qs[0].txt ? Buffer.from(qs[0].txt[0], 'latin1') : Buffer.alloc(0); seers.push({ oi, x, y, z, n: o.seername || '', t: t.subarray(0, 24).toString('base64'), tl: t.length }); }
+    else if (id === 83) { const qs = o.quests.concat(o.repeat); const t = qs.length && qs[0].txt ? Buffer.from(qs[0].txt[0], 'latin1') : Buffer.alloc(0); seers.push({ oi, x, y, z, n: o.seername || '', t: t.subarray(0, 24).toString('base64'), tl: t.length });
+      o.quests.forEach((q, i) => { if (q.m) seerQ.push({ oi, x: e[0], y: e[1], z, n: o.seername || '', i, rep: false, q: mission(q), r: reward(q) }); });
+      o.repeat.forEach((q, i) => { if (q.m) seerQ.push({ oi, x: e[0], y: e[1], z, n: o.seername || '', i, rep: true, q: mission(q), r: reward(q) }); }); }
     if (id === 113) { const sk = skillsOf(o.skills); skills.push({ oi, x: e[0], y: e[1], z, k: 'Witch Hut', n: sk.length === 1 ? sk[0] : sk.length ? 'random of ' + sk.length : 'any', v: sk.length > 1 && sk.length <= 12 ? sk.join(', ') : '' }); }
     else if (id === 81) { const [t, i] = o.bonus; skills.push({ oi, x: e[0], y: e[1], z, k: 'Scholar', n: t === 0 ? 'primary: ' + (PRIM[i] || '?') : t === 1 ? (SK[i] || 'skill #' + i) : t === 2 ? 'spell: ' + (SP[i] || '#' + i) : 'random', v: '' }); }
     else if (id === 104 || (id === 146 && sub === 0)) { const sk = o.custom !== -1 ? skillsOf(o.skills) : []; skills.push({ oi, x: e[0], y: e[1], z, k: id === 104 ? 'University' : 'Seafaring Academy', n: sk.length ? sk.join(', ') : 'random 4 skills', v: '' }); }
@@ -186,6 +191,7 @@ function build(m, gd) {
     size: N, tile: 1008, name: m.name, levels: m.levels, arts, terrain: T.toString('base64'), hotaIcons, tile0: tile0.toString('base64'), nobj: O.length, opos: opos.toString('base64'),
     artnames: AN, artdesc: AD, skills, combos: COMBOS, spellNames: SP.slice(0, 70),
     nav: { own, seers, counts, grid, sp, mon, towns, keys },
+    seerQ,
     perHero: PERHERO.map(([id, sub, n, b]) => ({ n, b })), perHeroObjs,
   };
   return { data, oinfo, defNames, placements, names };

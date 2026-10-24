@@ -39,7 +39,7 @@ function quest(r) {
 function seerQuest(r) {
   const q = quest(r); if (q.m === 0) { r.zero(1); return q; }
   r.s(); const t = r.u8(); q.rt = t;
-  if (t === 0) {} else if (t === 1 || t === 2) r.u32(); else if (t === 3 || t === 4) r.i8(); else if (t === 5) { r.u8(); r.u32(); } else if (t === 6 || t === 7) { r.u8(); r.u8(); } else if (t === 8) q.reward_art = artSlot(r); else if (t === 9) r.u8(); else if (t === 10) { r.u16(); r.u16(); } else throw new Error('reward ' + t);
+  if (t === 0) {} else if (t === 1 || t === 2) q.ra = r.u32(); else if (t === 3 || t === 4) q.ra = r.i8(); else if (t === 5) { q.ra = r.u8(); q.rb = r.u32(); } else if (t === 6 || t === 7) { q.ra = r.u8(); q.rb = r.u8(); } else if (t === 8) q.reward_art = artSlot(r); else if (t === 9) q.ra = r.u8(); else if (t === 10) { q.ra = r.u16(); q.rb = r.u16(); } else throw new Error('reward ' + t);
   return q;
 }
 function boxContent(r) {
