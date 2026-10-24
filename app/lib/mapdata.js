@@ -43,6 +43,8 @@ function loadNames(gd) {
   for (const line of (crt ? require('./h3lod').cp1251(crt) : '').split('\r\n').slice(2)) { const n = line.split('\t')[0]; if (n && n.trim()) CR[i++] = n; }
   for (const [k, v] of Object.entries(MAP18.creatures)) CR[v] = words(k);
   const HE = {}; i = 0; for (const r of gd.rows('hotraits.txt').slice(2)) if (r[0] && r[0].trim()) HE[i++] = r[0];
+  // HotA heroes are not in hotraits.txt: name them from the HotA 1.8 identifiers; names the map author set win
+  for (const [ident, id] of Object.entries(MAP18.heroes || {})) if (!HE[id]) { const n = ident.replace(/^\d+/, ''); HE[id] = n.charAt(0).toUpperCase() + n.slice(1); }
   for (const [k, v] of Object.entries(MAP18.heroes)) HE[v] = words(k);
   const SP = gd.rows('sptraits.txt').map(r => r[0]).filter(s => s && s.trim() && !['Name', 'Adventure Spells', 'Combat Spells', 'Creature Abilities'].includes(s));
   const SK = gd.rows('sstraits.txt').slice(2).map(r => r[0]).filter(s => s && s.trim()).concat(['Interference', 'Runes']);
@@ -55,7 +57,8 @@ function loadNames(gd) {
 
 function build(m, gd) {
   const N = m.size, NN = N * N, O = m.objects, T = m.terrain;
-  const names = loadNames(gd); const { AN, AD, CR, HE, SP, SK, BANK, OBJN, DW1 } = names;
+  const names = loadNames(gd); const { AN, AD, CR, SP, SK, BANK, OBJN, DW1 } = names; const HE = Object.assign({}, names.HE);
+  for (const [id, h] of Object.entries(m.heroAvail || {})) if (h.name) HE[id] = h.name;  // names the map author set
   const art = a => { const [aid, sp] = Array.isArray(a) ? a : [a, -1]; if (aid === 0xffff || aid === -1 || aid === undefined) return null; if (aid === 1 && sp >= 0 && sp < SP.length) return 'Spell Scroll (' + SP[sp] + ')'; return AN[aid] || ('Artifact #' + aid); };
   const cre = (cid, n) => { if (cid === 0xffff) return null; if (cid >= 0xffff - 16) { const lvl = Math.floor((0xffff - 1 - cid) / 2); return n ? `${n} random lvl ${lvl + 1}` : `random lvl ${lvl + 1}`; } return `${n ? n : 'random'} ${CR[cid] || 'creature #' + cid}`; };
   const army = a => (a || []).filter(([c, n]) => c !== 0xffff && n).map(([c, n]) => cre(c, n)).join(', ') || 'empty';
@@ -121,7 +124,7 @@ function build(m, gd) {
       const d = { k: PASS[id], x: e[0], y: e[1], z, ox: x, oy: y, s: sub, oi };
       if (id === 33 || id === 219) { d.a = army(o.army); d.o = o.owner < 8 ? COL[o.owner] : 'neutral'; }
       if (id === 212 && sub >= 1000) { if (sub === 1000) d.k = 'questGate'; else d.k = null; }
-      if (d.k) { if ((id === 9 || id === 212) && sub < 8) d.c = KEYCOL[sub]; if (o.quest) d.q = o.quest.m ? mission(o.quest) : 'no condition'; if (id >= 43 && id <= 45) d.c = 'channel ' + sub; sp.push(d); }
+      if (d.k) { if ((id === 9 || id === 212) && sub < 8) d.c = KEYCOL[sub]; if (o.quest) { d.q = o.quest.m ? mission(o.quest) : 'no condition'; if (o.quest.m === 8) d.hid = o.quest.hero; } if (id >= 43 && id <= 45) d.c = 'channel ' + sub; sp.push(d); }
     } else if (MON.has(id)) mon.push({ x, y, z, n: id === 54 ? cre(sub, o.count) : 'random monster' + (id > 71 && id < 76 ? ' lvl ' + (id - 71) : id >= 162 ? ' lvl ' + (id - 157) : ''), oi });
     else if (id === 10 && sub < 8) keys.push({ x, y, z, c: KEYCOL[sub] });
     if (id === 98 || id === 77) towns.push({ oi, x: e[0], y: e[1], z, cn: o.name || '', n: o.name || (id === 77 ? 'Random town' : FAC[sub] || 'Town'), f: id === 98 && sub < FAC.length ? FAC[sub] : 'random', o: o.owner < 8 ? COL[o.owner] : 'neutral' });
@@ -132,8 +135,8 @@ function build(m, gd) {
     else if (id === 33 || id === 219) own.push({ oi, k: 'garrison', x: e[0], y: e[1], z, n: 'Garrison', o: ow });
     else if (id === 98 || id === 77) own.push({ oi, k: 'town', x: e[0], y: e[1], z, n: o.name || 'Town', o: ow });
     else if (id === 83) { const qs = o.quests.concat(o.repeat); const t = qs.length && qs[0].txt ? Buffer.from(qs[0].txt[0], 'latin1') : Buffer.alloc(0); seers.push({ oi, x, y, z, n: o.seername || '', t: t.subarray(0, 24).toString('base64'), tl: t.length });
-      o.quests.forEach((q, i) => { if (q.m) seerQ.push({ oi, x: e[0], y: e[1], z, n: o.seername || '', i, rep: false, q: mission(q), r: reward(q) }); });
-      o.repeat.forEach((q, i) => { if (q.m) seerQ.push({ oi, x: e[0], y: e[1], z, n: o.seername || '', i, rep: true, q: mission(q), r: reward(q) }); }); }
+      o.quests.forEach((q, i) => { if (q.m) seerQ.push({ oi, x: e[0], y: e[1], z, n: o.seername || '', i, rep: false, q: mission(q), r: reward(q), hid: q.m === 8 ? q.hero : undefined }); });
+      o.repeat.forEach((q, i) => { if (q.m) seerQ.push({ oi, x: e[0], y: e[1], z, n: o.seername || '', i, rep: true, q: mission(q), r: reward(q), hid: q.m === 8 ? q.hero : undefined }); }); }
     if (id === 113) { const sk = skillsOf(o.skills); skills.push({ oi, x: e[0], y: e[1], z, k: 'Witch Hut', n: sk.length === 1 ? sk[0] : sk.length ? 'random of ' + sk.length : 'any', v: sk.length > 1 && sk.length <= 12 ? sk.join(', ') : '' }); }
     else if (id === 81) { const [t, i] = o.bonus; skills.push({ oi, x: e[0], y: e[1], z, k: 'Scholar', n: t === 0 ? 'primary: ' + (PRIM[i] || '?') : t === 1 ? (SK[i] || 'skill #' + i) : t === 2 ? 'spell: ' + (SP[i] || '#' + i) : 'random', v: '' }); }
     else if (id === 104 || (id === 146 && sub === 0)) { const sk = o.custom !== -1 ? skillsOf(o.skills) : []; skills.push({ oi, x: e[0], y: e[1], z, k: id === 104 ? 'University' : 'Seafaring Academy', n: sk.length ? sk.join(', ') : 'random 4 skills', v: '' }); }
@@ -191,7 +194,7 @@ function build(m, gd) {
     size: N, tile: 1008, name: m.name, levels: m.levels, arts, terrain: T.toString('base64'), hotaIcons, tile0: tile0.toString('base64'), nobj: O.length, opos: opos.toString('base64'),
     artnames: AN, artdesc: AD, skills, combos: COMBOS, spellNames: SP.slice(0, 70),
     nav: { own, seers, counts, grid, sp, mon, towns, keys },
-    seerQ,
+    seerQ, heroAvail: Object.fromEntries(Object.entries(m.heroAvail || {}).map(([id, h]) => [id, h.mask])),
     perHero: PERHERO.map(([id, sub, n, b]) => ({ n, b })), perHeroObjs,
   };
   return { data, oinfo, defNames, placements, names };

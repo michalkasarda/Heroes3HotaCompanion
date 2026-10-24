@@ -131,8 +131,9 @@ function parse(buf) {
   if (vc !== -1) { r.bool(); r.bool(); if (vc === 0) r.u16(); else if (vc === 1) { r.u16(); r.i32(); } else if (vc === 2) { r.i8(); r.i32(); } else if (vc === 3) { r.int3(); r.i8(); r.i8(); } else if (vc === 4 || vc === 5 || vc === 6 || vc === 7) r.int3(); else if (vc === 8 || vc === 9 || vc === 11) {} else if (vc === 10) { r.u8(); r.int3(); } else if (vc === 12) r.u32(); else throw new Error('victory ' + vc); }
   const lc = r.i8(); if (lc === 0 || lc === 1) r.int3(); else if (lc === 2) r.u16();
   if (r.u8() > 0) r.skip(8);
-  n = r.u32(); r.skip((n + 7) >> 3); n = r.u32(); r.skip(n);
-  n = r.u8(); for (let i = 0; i < n; i++) { r.u8(); r.u8(); r.s(); r.u8(); }
+  n = r.u32(); const heroAllowed = Buffer.from(r.bytes((n + 7) >> 3)); n = r.u32(); r.skip(n);
+  // custom heroes: id, portrait, name, players allowed to hire them (bit per colour)
+  n = r.u8(); const heroAvail = {}; for (let i = 0; i < n; i++) { const id = r.u8(); r.u8(); const nm = r.s(); heroAvail[id] = { mask: r.u8(), name: nm }; }
   r.zero(31); r.bool(); r.zero(3); n = r.i32(); r.skip((n + 7) >> 3); r.i32(); r.skip(8);
   if (r.bool()) throw new Error('Map uses the HotA event scripting system, not supported');
   n = r.u32(); r.skip((n + 7) >> 3); r.skip(13);
@@ -146,6 +147,6 @@ function parse(buf) {
   const objects = []; n = r.u32();
   for (let i = 0; i < n; i++) { const pos = r.int3(); const ti = r.u32(); r.zero(5); const t = templates[ti]; const info = readObject(r, t.id, t.sub); objects.push(Object.assign({ pos, t, ti }, info)); }
   const events = r.u32();
-  return { size, levels, name, desc, players, terrain, templates, objects, events };
+  return { size, levels, name, desc, players, terrain, templates, objects, events, heroAvail, heroAllowed };
 }
 module.exports = { title, parse };

@@ -360,7 +360,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       <div class="row"><label><input type="checkbox" id="o-keys" checked> Routing uses my keys</label><label><input type="checkbox" id="o-quests" checked> Routing uses quest progress</label><label><input type="checkbox" id="f-gd" checked> Show guards</label></div>
       <div class="keys" id="keys"></div>
       <div class="search"><input id="qq" type="search" placeholder="Filter quests (condition, reward, name, coords)" autocomplete="off" aria-label="Filter quests"></div>
-      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
+      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><select class="sel" id="q-hq" aria-label="Hero quests" title="Which &quot;be hero X&quot; quests to list"><option value="mine">Hero quests: my heroes</option><option value="avail" selected>Hero quests: heroes I can get</option><option value="all">Hero quests: all</option></select><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
     </div>
     <ul id="qlist" role="listbox" aria-label="Quest guards"></ul>
   </div>
@@ -783,10 +783,16 @@ const COLORS = Object.keys(PCOL);
 const spKey = p => `${p.z},${p.x},${p.y}`;
 function saveProg() { try { localStorage.setItem('mi-progress2', JSON.stringify(progAll)); localStorage.setItem('mi-player', curPlayer); } catch (e) {} }
 const GUARDS = NAV.sp.map((p, i) => ({...p, i})).filter(p => /Guard|Gate/.test(p.k));
+// 'be hero X' quests: 'no' = the map never lets this colour have X, 'yours' = you hold X now, 'taken' = another player holds X now (can return to the tavern if it dies)
+function heroAccess(hid) {
+  const mask = DATA.heroAvail ? DATA.heroAvail[hid] : undefined; if (mask !== undefined && !((mask >> curPlayer) & 1)) return 'no';
+  if (SAVE && gameOn()) { const h = SAVE.heroArts.find(x => x.id === hid); if (h && h.owner === curPlayer) return 'yours'; if (h && h.owner < 8) return 'taken:' + h.owner; }
+  return null;
+}
 function qstate(p) {  // auto state of a quest guard for the chosen player: 'done' | 'impossible' | null
   if (!p.q) return null;
   if (p.q.startsWith('be player ')) return p.q.slice(10) === PLAYER[curPlayer] ? 'done' : 'impossible';
-  if (p.q.startsWith('be hero ') && SAVE && gameOn()) { const nm = p.q.slice(8); return SAVE.heroes.some(h => h.name === nm && h.owner === curPlayer) ? 'done' : null; }
+  if (p.hid !== undefined) { const a = heroAccess(p.hid); return a === 'yours' ? 'done' : a === 'no' ? 'impossible' : null; }
   return null;
 }
 const keyFromSave = c => !!SAVE && gameOn() && !!SAVE.keys && ((SAVE.keys[COLORS.indexOf(c)] >> curPlayer) & 1) === 1;
@@ -812,11 +818,13 @@ function syncKeys() { for (const inp of keysEl.querySelectorAll('input')) { cons
 const qlist = document.getElementById('qlist'), qq = document.getElementById('qq'), qhide = document.getElementById('q-hide');
 const QUESTS = GUARDS.filter(p => p.k === 'questGuard' || p.k === 'questGate').sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
 function refreshQuests() {
-  const t = qq.value.trim().toLowerCase(); qlist.innerHTML = ''; let n = 0, done = 0, seerTotal = 0;
+  const t = qq.value.trim().toLowerCase(); qlist.innerHTML = ''; let n = 0, done = 0, seerTotal = 0, heroHidden = 0;
   const sec = label => { const li = document.createElement('li'); li.className = 'qsec'; li.textContent = label; qlist.appendChild(li); };
   sec('One-time quests');
+  const hqv = document.getElementById('q-hq').value;
   for (const p of QUESTS) {
     const a = qstate(p); if (a === 'impossible') continue;
+    if (hqv === 'mine' && p.hid !== undefined && heroAccess(p.hid) !== 'yours') { heroHidden++; continue; }
     const g = gone(p.oi) || a === 'done'; const d = g || !!prog.done[spKey(p)]; if (d) done++;
     const txt = `${p.q} ${p.x} ${p.y} ${p.z ? 'underground' : 'surface'} ${p.k === 'questGate' ? 'gate' : 'guard'}`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) continue; n++;
@@ -829,12 +837,14 @@ function refreshQuests() {
   // Seer's Huts: one-time quests (done from the save when this colour completed the hut, or ticked by hand), then repeatable ones
   const seerItem = (sq, oneTime) => {
     if (/^be player /.test(sq.q) && sq.q !== 'be player ' + PLAYER[curPlayer]) return;
+    const ha = sq.hid !== undefined ? heroAccess(sq.hid) : null; const hq = document.getElementById('q-hq').value; if (sq.hid !== undefined && ((ha === 'no' && hq !== 'all') || (hq === 'mine' && ha !== 'yours'))) { heroHidden++; return; }
+    const hnote = ha === 'yours' ? ' \u00b7 you have this hero' : ha === 'no' ? ' \u00b7 hero not available to ' + PLAYER[curPlayer] : ha ? ' \u00b7 hero held by ' + PLAYER[+ha.slice(6)] : '';
     const g = oneTime && !!(seerMask(sq.oi) >> curPlayer & 1), key = 'seer:' + sq.oi + ':' + sq.i, d = oneTime && (g || !!prog.done[key]);
     if (oneTime) { seerTotal++; if (d) done++; }
     const txt = `${sq.q} ${sq.r} ${sq.n} ${sq.x} ${sq.y} ${sq.z ? 'underground' : 'surface'} seer`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) return; n++;
-    const li = document.createElement('li'); li.className = d ? 'done' : '';
-    li.innerHTML = `${oneTime ? `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done">` : '<span class="sp"></span>'}<span class="q">${sq.q} <span class="rw">&rarr; ${sq.r}</span></span><span class="m" style="grid-column:2">Seer's Hut${sq.n ? ' ' + sq.n : ''} (${sq.x}, ${sq.y}) ${sq.z ? 'Underground' : 'Surface'}${g ? ' \u00b7 done (from save)' : ''}</span>`;
+    const li = document.createElement('li'); li.className = d || (ha && ha !== 'yours') ? 'done' : '';
+    li.innerHTML = `${oneTime ? `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done">` : '<span class="sp"></span>'}<span class="q">${sq.q} <span class="rw">&rarr; ${sq.r}</span></span><span class="m" style="grid-column:2">Seer's Hut${sq.n ? ' ' + sq.n : ''} (${sq.x}, ${sq.y}) ${sq.z ? 'Underground' : 'Surface'}${g ? ' \u00b7 done (from save)' : ''}${hnote}</span>`;
     const cb = li.querySelector('input'); if (cb) cb.addEventListener('change', e => { e.stopPropagation(); prog.done[key] = e.target.checked; if (!e.target.checked) delete prog.done[key]; saveProg(); refreshQuests(); });
     li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (sq.z ? 'ug' : 'ow')) setLevel(sq.z ? 'ug' : 'ow'); flyTo(sq.x, sq.y, Math.max(s, 1.2)); });
     qlist.appendChild(li);
@@ -843,10 +853,10 @@ function refreshQuests() {
   sec('Repeatable quests');
   for (const sq of DATA.seerQ) if (sq.rep) seerItem(sq, false);
   const total = QUESTS.filter(p => qstate(p) !== 'impossible').length + seerTotal, fromSave = QUESTS.filter(p => gone(p.oi)).length;
-  document.getElementById('qcount').textContent = `${done} done / ${total}` + (fromSave ? ` (${fromSave} from save)` : '') + (QUESTS.length - total ? `, ${QUESTS.length - total} for other players hidden` : '');
+  document.getElementById('qcount').textContent = `${done} done / ${total}` + (fromSave ? ` (${fromSave} from save)` : '') + (QUESTS.length - total + heroHidden ? `, ${QUESTS.length - total + heroHidden} hidden by colour / hero filters` : '');
 }
 function setDone(p, v) { prog.done[spKey(p)] = v; if (!v) delete prog.done[spKey(p)]; saveProg(); paintGuards(); refreshQuests(); if (start && goal) findRoute(); }
-qq.addEventListener('input', refreshQuests); qhide.addEventListener('change', refreshQuests);
+qq.addEventListener('input', refreshQuests); qhide.addEventListener('change', refreshQuests); { const hq = document.getElementById('q-hq'); try { hq.value = localStorage.getItem('hc-hq') || 'avail'; } catch (e) {} hq.addEventListener('change', () => { try { localStorage.setItem('hc-hq', hq.value); } catch (e) {} refreshQuests(); }); }
 document.getElementById('q-reset').addEventListener('click', () => { prog = {keys: {}, done: {}}; saveProg(); syncKeys(); paintGuards(); refreshQuests(); });
 document.getElementById('f-gd').addEventListener('change', e => view.classList.toggle('gd-off', !e.target.checked));
 for (const id of ['o-keys', 'o-quests']) document.getElementById(id).addEventListener('change', () => { if (start && goal) findRoute(); });
