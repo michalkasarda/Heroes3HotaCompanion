@@ -360,7 +360,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       <div class="row"><label><input type="checkbox" id="o-keys" checked> Routing uses my keys</label><label><input type="checkbox" id="o-quests" checked> Routing uses quest progress</label><label><input type="checkbox" id="f-gd" checked> Show guards</label></div>
       <div class="keys" id="keys"></div>
       <div class="search"><input id="qq" type="search" placeholder="Filter quests (condition, reward, name, coords)" autocomplete="off" aria-label="Filter quests"></div>
-      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><select class="sel" id="q-hq" aria-label="Hero quests" title="Which &quot;be hero X&quot; quests to list"><option value="mine">Hero quests: my heroes</option><option value="avail" selected>Hero quests: obtainable heroes</option><option value="all">Hero quests: all</option></select><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
+      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><select class="sel" id="q-hq" aria-label="Hero quests" title="Which &quot;be hero X&quot; quests to list"><option value="mine">Hero quests: my heroes</option><option value="avail" selected>Hero quests: obtainable on foot</option><option value="air">Hero quests: obtainable incl. flying</option><option value="all">Hero quests: all</option></select><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
     </div>
     <ul id="qlist" role="listbox" aria-label="Quest guards"></ul>
   </div>
@@ -790,7 +790,7 @@ function heroAccess(hid) {
   const live = SAVE && gameOn();
   if (live) { const h = SAVE.heroArts.find(x => x.id === hid); if (h && h.owner === curPlayer) return {c: 'yours', t: 'you have this hero'}; if (h && h.owner < 8) return {c: 'taken', t: 'hero held by ' + PLAYER[h.owner]}; }
   const pr = PRISON_OF[hid];
-  if (pr && (!live || SAVE.present[pr.oi])) return (pr.reach >> curPlayer) & 1 ? {c: 'prison', t: `free from the prison at (${pr.x}, ${pr.y})${pr.z ? ' underground' : ''}`} : {c: 'no', t: 'prison not reachable for ' + PLAYER[curPlayer]};
+  if (pr && (!live || SAVE.present[pr.oi])) { const at = `(${pr.x}, ${pr.y})${pr.z ? ' underground' : ''}`; return (pr.reach >> curPlayer) & 1 ? {c: 'prison', t: 'free from the prison at ' + at} : (pr.fly >> curPlayer) & 1 ? {c: 'air', t: `prison at ${at} reachable only by air (${(DATA.flight || []).join(', ')})`} : {c: 'no', t: 'prison not reachable for ' + PLAYER[curPlayer]}; }
   const mask = DATA.heroAvail ? DATA.heroAvail[hid] : undefined; if (mask !== undefined && !((mask >> curPlayer) & 1)) return {c: 'no', t: 'hero not available to ' + PLAYER[curPlayer]};
   if (DATA.heroAllowed && !((DATA.heroAllowed[hid >> 3] >> (hid & 7)) & 1)) return {c: 'no', t: 'hero not in the tavern pool'};
   return {c: 'tavern', t: 'hire in a tavern'};
@@ -844,13 +844,13 @@ function refreshQuests() {
   const seerItem = (sq, oneTime) => {
     if (/^be player /.test(sq.q) && sq.q !== 'be player ' + PLAYER[curPlayer]) return;
     const ha = sq.hid !== undefined ? heroAccess(sq.hid) : null; const hq = document.getElementById('q-hq').value;
-    if (ha && ((hq === 'mine' && ha.c !== 'yours') || (hq === 'avail' && !['yours', 'prison', 'tavern'].includes(ha.c)))) { heroHidden++; return; }
+    if (ha && ((hq === 'mine' && ha.c !== 'yours') || (hq === 'avail' && !['yours', 'prison', 'tavern'].includes(ha.c)) || (hq === 'air' && !['yours', 'prison', 'tavern', 'air'].includes(ha.c)))) { heroHidden++; return; }
     const hnote = ha ? ' \u00b7 ' + ha.t : '';
     const g = oneTime && !!(seerMask(sq.oi) >> curPlayer & 1), key = 'seer:' + sq.oi + ':' + sq.i, d = oneTime && (g || !!prog.done[key]);
     if (oneTime) { seerTotal++; if (d) done++; }
     const txt = `${sq.q} ${sq.r} ${sq.n} ${sq.x} ${sq.y} ${sq.z ? 'underground' : 'surface'} seer`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) return; n++;
-    const li = document.createElement('li'); li.className = d || (ha && (ha.c === 'taken' || ha.c === 'no')) ? 'done' : '';
+    const li = document.createElement('li'); li.className = d || (ha && (ha.c === 'taken' || ha.c === 'no' || ha.c === 'air')) ? 'done' : '';
     li.innerHTML = `${oneTime ? `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done">` : '<span class="sp"></span>'}<span class="q">${sq.q} <span class="rw">&rarr; ${sq.r}</span></span><span class="m" style="grid-column:2">Seer's Hut${sq.n ? ' ' + sq.n : ''} (${sq.x}, ${sq.y}) ${sq.z ? 'Underground' : 'Surface'}${g ? ' \u00b7 done (from save)' : ''}${hnote}</span>`;
     const cb = li.querySelector('input'); if (cb) cb.addEventListener('change', e => { e.stopPropagation(); prog.done[key] = e.target.checked; if (!e.target.checked) delete prog.done[key]; saveProg(); refreshQuests(); });
     li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (sq.z ? 'ug' : 'ow')) setLevel(sq.z ? 'ug' : 'ow'); flyTo(sq.x, sq.y, Math.max(s, 1.2)); });

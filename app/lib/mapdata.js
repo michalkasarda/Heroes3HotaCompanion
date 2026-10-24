@@ -193,7 +193,15 @@ function build(m, gd) {
   // ---- per-colour reachability from the map's starting state (runs once per map) ----
   // Flood from each colour's starting heroes and towns: boats and teleports allowed, monsters and ordinary quests assumed doable,
   // quest guards/gates whose condition this colour can never meet are walls, border guards open once a keymaster tent of that colour is reached.
-  const reachMask = new Uint8Array(2 * NN);
+  const reachMask = new Uint8Array(2 * NN), flyMask = new Uint8Array(2 * NN);
+  // fixed sources of flight: Fly (6) / Dimension Door (8) from shrines, scrolls, boxes, events, Seer's Huts, Angel Wings (artifact 72), and HotA airships/airship yards
+  const FLYSP = new Set([6, 8]); const flySrc = new Map();
+  O.forEach(o => { const e = entry(o), at = e[2] * NN + e[1] * N + e[0]; const id = o.t.id;
+    if ((id >= 88 && id <= 90 || id === 93) && FLYSP.has(o.spell)) flySrc.set(at, 'spell');
+    else if ((id === 6 || id === 26) && o.spells && o.spells.some(x => FLYSP.has(x))) flySrc.set(at, 'spell');
+    else if (id === 83 && o.quests.concat(o.repeat).some(q => q.rt === 9 && FLYSP.has(q.ra))) flySrc.set(at, 'spell');
+    else if (id === 5 && o.t.sub === 72) flySrc.set(at, 'Angel Wings');
+    else if ((id === 87 && o.t.sub === 1) || (id === 8 && o.t.sub === 100)) flySrc.set(at, 'airship'); });
   {
     const spAt = new Int32Array(2 * NN).fill(-1); sp.forEach((d, i) => { spAt[d.z * NN + d.y * N + d.x] = i; });
     const links = sp.map(() => []); const byKey = {};
@@ -204,13 +212,14 @@ function build(m, gd) {
       pairs.sort((p, q) => p[0] - q[0]); const used = new Set(); for (const [, a, b] of pairs) if (!used.has(a) && !used.has(b)) { used.add(a); used.add(b); links[a] = [b]; links[b] = [a]; } }
     const tentAt = new Map(); keys.forEach(k => { for (const o of O) if (o.t.id === 10 && o.pos[2] === k.z) { const e = entry(o); if (e[0] === k.x && e[1] === k.y) tentAt.set(k.z * NN + e[1] * N + e[0], k.c); } });
     const impossible = (q, p) => q && ((q.m === 9 && q.player !== p) || (q.m === 8 && m.heroAvail && m.heroAvail[q.hero] && !((m.heroAvail[q.hero].mask >> p) & 1)));
-    for (let p = 0; p < 8; p++) {
+    const floodColour = (p, fly) => {
       const starts = []; O.forEach(o => { if (((o.t.id === 34 || o.t.id === 70) && o.owner === p) || ((o.t.id === 98 || o.t.id === 77) && o.owner === p)) { const e = entry(o); starts.push(e[2] * NN + e[1] * N + e[0]); } });
-      if (!starts.length) continue;
+      if (!starts.length) return null;
       const have = new Set(); let R;
       for (let pass = 0; pass < 10; pass++) {
         R = new Uint8Array(2 * NN); const q = []; for (const st of starts) { R[st] = 1; q.push(st); }
-        const tryEnter = (t, dy) => { if (R[t]) return; const c = G[t]; if (c === 1 || c === 4) return; if (dy === 1 && visit[t] && noTop[t]) return;
+        // flying (surface only): obstacles and object bodies are crossed in the air; entrances and gates keep their rules
+        const tryEnter = (t, dy) => { if (R[t]) return; const c = G[t]; if (c === 4 || (c === 1 && !(fly && t < NN))) return; if (dy === 1 && visit[t] && noTop[t]) return;
           const si = spAt[t]; if (si >= 0) { const d = sp[si]; if ((d.k === 'borderGuard' || d.k === 'borderGate') && d.c && !have.has(d.c)) return; if ((d.k === 'questGuard' || d.k === 'questGate') && impossible(O[d.oi].quest, p)) return; }
           R[t] = 1; if (tentAt.has(t)) have.add(tentAt.get(t)); q.push(t); };
         const before = have.size;
@@ -219,15 +228,21 @@ function build(m, gd) {
           const si = spAt[u]; if (si >= 0) for (const j of links[si]) tryEnter(sp[j].z * NN + sp[j].y * N + sp[j].x, 0); }
         if (have.size === before) break;
       }
+      return R;
+    };
+    for (let p = 0; p < 8; p++) {
+      const R = floodColour(p, false); if (!R) continue;
       for (let i = 0; i < 2 * NN; i++) if (R[i]) reachMask[i] |= 1 << p;
+      let canFly = false; for (const at of flySrc.keys()) if (R[at]) canFly = true;
+      if (canFly) { const F = floodColour(p, true); for (let i = 0; i < 2 * NN; i++) if (F[i]) flyMask[i] |= 1 << p; }
     }
   }
-  const prisons = []; O.forEach((o, oi) => { if (o.t.id === 62) { const e = entry(o); prisons.push({ oi, hid: o.hero, x: e[0], y: e[1], z: e[2], reach: reachMask[e[2] * NN + e[1] * N + e[0]] }); } });
+  const prisons = []; O.forEach((o, oi) => { if (o.t.id === 62) { const e = entry(o); prisons.push({ oi, hid: o.hero, x: e[0], y: e[1], z: e[2], reach: reachMask[e[2] * NN + e[1] * N + e[0]], fly: flyMask[e[2] * NN + e[1] * N + e[0]] }); } });
   const data = {
     size: N, tile: 1008, name: m.name, levels: m.levels, arts, terrain: T.toString('base64'), hotaIcons, tile0: tile0.toString('base64'), nobj: O.length, opos: opos.toString('base64'),
     artnames: AN, artdesc: AD, skills, combos: COMBOS, spellNames: SP.slice(0, 70),
     nav: { own, seers, counts, grid, sp, mon, towns, keys },
-    seerQ, prisons, heroAllowed: Array.from(m.heroAllowed || []), heroAvail: Object.fromEntries(Object.entries(m.heroAvail || {}).map(([id, h]) => [id, h.mask])),
+    seerQ, prisons, flight: [...new Set(flySrc.values())], heroAllowed: Array.from(m.heroAllowed || []), heroAvail: Object.fromEntries(Object.entries(m.heroAvail || {}).map(([id, h]) => [id, h.mask])),
     perHero: PERHERO.map(([id, sub, n, b]) => ({ n, b })), perHeroObjs,
   };
   return { data, oinfo, defNames, placements, names };

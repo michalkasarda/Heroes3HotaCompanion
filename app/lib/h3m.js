@@ -46,9 +46,9 @@ function boxContent(r) {
   const g = msgGuards(r); r.u32(); r.i32(); r.i8(); r.i8(); r.skip(28); r.skip(4);
   let n = r.u8(); for (let i = 0; i < n; i++) { r.u8(); r.u8(); }
   n = r.u8(); const arts = []; for (let i = 0; i < n; i++) arts.push(artSlot(r));
-  n = r.u8(); for (let i = 0; i < n; i++) r.u8();
+  n = r.u8(); const spells = []; for (let i = 0; i < n; i++) spells.push(r.u8());
   n = r.u8(); for (let i = 0; i < n; i++) { r.u16(); r.u16(); }
-  r.zero(8); return { arts, guards: g };
+  r.zero(8); return { arts, guards: g, spells };
 }
 function boxHota(r) { r.i32(); r.i32(); r.i32(); if (r.bool()) { r.i32(); r.bool(); } }
 function rewardBlock(r) { r.i32(); r.i32(); r.i32(); r.i8(); r.i32(); r.i8(); }
@@ -136,7 +136,7 @@ function parse(buf) {
   n = r.u8(); const heroAvail = {}; for (let i = 0; i < n; i++) { const id = r.u8(); r.u8(); const nm = r.s(); heroAvail[id] = { mask: r.u8(), name: nm }; }
   r.zero(31); r.bool(); r.zero(3); n = r.i32(); r.skip((n + 7) >> 3); r.i32(); r.skip(8);
   if (r.bool()) throw new Error('Map uses the HotA event scripting system, not supported');
-  n = r.u32(); r.skip((n + 7) >> 3); r.skip(13);
+  n = r.u32(); r.skip((n + 7) >> 3); const spellBits = Buffer.from(r.bytes(9)); r.skip(4);  // spells: 70 bits, a set bit = banned on this map
   n = r.u32(); for (let i = 0; i < n; i++) { r.s(); r.s(); }
   const nh = r.u32();
   for (let i = 0; i < nh; i++) { if (!r.bool()) continue; if (r.bool()) r.u32(); if (r.bool()) { const k = r.u32(); for (let j = 0; j < k; j++) { r.u8(); r.u8(); } } heroArtifacts(r); if (r.bool()) r.s(); r.i8(); if (r.bool()) r.skip(9); if (r.bool()) r.skip(4); }
@@ -147,6 +147,6 @@ function parse(buf) {
   const objects = []; n = r.u32();
   for (let i = 0; i < n; i++) { const pos = r.int3(); const ti = r.u32(); r.zero(5); const t = templates[ti]; const info = readObject(r, t.id, t.sub); objects.push(Object.assign({ pos, t, ti }, info)); }
   const events = r.u32();
-  return { size, levels, name, desc, players, terrain, templates, objects, events, heroAvail, heroAllowed };
+  return { size, levels, name, desc, players, terrain, templates, objects, events, heroAvail, heroAllowed, spellBits };
 }
 module.exports = { title, parse };
