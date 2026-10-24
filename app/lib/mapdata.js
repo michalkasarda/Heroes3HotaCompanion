@@ -212,7 +212,7 @@ function build(m, gd) {
       pairs.sort((p, q) => p[0] - q[0]); const used = new Set(); for (const [, a, b] of pairs) if (!used.has(a) && !used.has(b)) { used.add(a); used.add(b); links[a] = [b]; links[b] = [a]; } }
     const tentAt = new Map(); keys.forEach(k => { for (const o of O) if (o.t.id === 10 && o.pos[2] === k.z) { const e = entry(o); if (e[0] === k.x && e[1] === k.y) tentAt.set(k.z * NN + e[1] * N + e[0], k.c); } });
     const impossible = (q, p) => q && ((q.m === 9 && q.player !== p) || (q.m === 8 && m.heroAvail && m.heroAvail[q.hero] && !((m.heroAvail[q.hero].mask >> p) & 1)));
-    const floodColour = (p, fly) => {
+    const floodColour = (p, fly, noGates) => {
       const starts = []; O.forEach(o => { if (((o.t.id === 34 || o.t.id === 70) && o.owner === p) || ((o.t.id === 98 || o.t.id === 77) && o.owner === p)) { const e = entry(o); starts.push(e[2] * NN + e[1] * N + e[0]); } });
       if (!starts.length) return null;
       const have = new Set(); let R;
@@ -220,7 +220,7 @@ function build(m, gd) {
         R = new Uint8Array(2 * NN); const q = []; for (const st of starts) { R[st] = 1; q.push(st); }
         // flying (surface only): obstacles and object bodies are crossed in the air; entrances and gates keep their rules
         const tryEnter = (t, dy) => { if (R[t]) return; const c = G[t]; if (c === 4 || (c === 1 && !(fly && t < NN))) return; if (dy === 1 && visit[t] && noTop[t]) return;
-          const si = spAt[t]; if (si >= 0) { const d = sp[si]; if ((d.k === 'borderGuard' || d.k === 'borderGate') && d.c && !have.has(d.c)) return; if ((d.k === 'questGuard' || d.k === 'questGate') && impossible(O[d.oi].quest, p)) return; }
+          const si = spAt[t]; if (si >= 0) { const d = sp[si]; if (!noGates && (d.k === 'borderGuard' || d.k === 'borderGate') && d.c && !have.has(d.c)) return; if (!noGates && (d.k === 'questGuard' || d.k === 'questGate') && impossible(O[d.oi].quest, p)) return; }
           R[t] = 1; if (tentAt.has(t)) have.add(tentAt.get(t)); q.push(t); };
         const before = have.size;
         while (q.length) { const u = q.pop(); const z = u >= NN ? 1 : 0, r = u % NN, ux = r % N, uy = (r - ux) / N;
@@ -234,7 +234,8 @@ function build(m, gd) {
       const R = floodColour(p, false); if (!R) continue;
       for (let i = 0; i < 2 * NN; i++) if (R[i]) reachMask[i] |= 1 << p;
       let canFly = false; for (const at of flySrc.keys()) if (R[at]) canFly = true;
-      if (canFly) { const F = floodColour(p, true); for (let i = 0; i < 2 * NN; i++) if (F[i]) flyMask[i] |= 1 << p; }
+      // flight counts only where it crosses terrain: tiles walkable once colour gates are ignored are gate-locked, and flying around a gate does not count
+      if (canFly) { const F = floodColour(p, true), W = floodColour(p, false, true); for (let i = 0; i < 2 * NN; i++) if (F[i] && !W[i]) flyMask[i] |= 1 << p; }
     }
   }
   const prisons = []; O.forEach((o, oi) => { if (o.t.id === 62) { const e = entry(o); prisons.push({ oi, hid: o.hero, x: e[0], y: e[1], z: e[2], reach: reachMask[e[2] * NN + e[1] * N + e[0]], fly: flyMask[e[2] * NN + e[1] * N + e[0]] }); } });
