@@ -836,7 +836,8 @@ class Heap { constructor() { this.k = []; this.v = []; } push(k, v) { const K = 
 function route(s, g, opt) {
   const dist = new Float64Array(2 * NN).fill(Infinity), prev = new Int32Array(2 * NN).fill(-1), via = new Int8Array(2 * NN);
   const h = new Heap(); dist[s] = 0; h.push(0, s);
-  const enter = (t, isGoal) => { const c = code(t); if (c === 1 || c === 4) return false; if (c === 2) return opt.boat;
+  // dy = +1 means moving down, i.e. entering from the tile above; c 3 = building visited from a neighbour, never walked through
+  const enter = (t, isGoal, dy) => { const c = code(t); if (c === 1 || c === 4) return false; if (c === 2) return opt.boat; if (dy === 1 && (grid[t >= NN ? 1 : 0][t % NN] & 128)) return false; if (c === 3) return isGoal;
     const si = spAt[t]; if (si >= 0) { const p = NAV.sp[si]; if (!gone(p.oi)) { if (opt.keys && (p.k === 'borderGuard' || p.k === 'borderGate') && !hasKey(p.c)) return isGoal; if (opt.quests && (p.k === 'questGuard' || p.k === 'questGate') && isLocked(p)) return isGoal; } }
     return true; };
   const pen = t => { let p = 0; if (opt.mon && ((guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)) || (code(t) === 6 && guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)))) p += 4000; const si = spAt[t]; if (opt.gate && si >= 0 && /Guard|Gate|garrison/.test(NAV.sp[si].k)) p += 6000; return p; };
@@ -845,7 +846,7 @@ function route(s, g, opt) {
     const z = u >= NN ? 1 : 0, r = u % NN, ux = r % N, uy = (r - ux) / N, uw = isWater(u);
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue; const x = ux + dx, y = uy + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue;
-      const t = idx(x, y, z); if (!enter(t, t === g)) continue;
+      const t = idx(x, y, z); if (!enter(t, t === g, dy)) continue;
       const nd = d + cst(t) * (dx && dy ? 1.41421 : 1) + pen(t) + (isWater(t) !== uw ? EMBARK : 0);
       if (nd < dist[t]) { dist[t] = nd; prev[t] = u; via[t] = 0; h.push(nd, t); }
     }

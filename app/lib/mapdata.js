@@ -97,12 +97,16 @@ function build(m, gd) {
   const G = new Uint8Array(2 * NN), cost = new Uint8Array(2 * NN), water = new Uint8Array(2 * NN);
   const TC = [0, 2, 0, 2, 3, 1, 0, 0, 0, 0, 0, 1];
   for (let i = 0; i < m.levels * NN; i++) { const tt = T[7 * i], road = T[7 * i + 4] & 7; if (tt === 8) { G[i] = 2; water[i] = 1; } else if (tt === 9) G[i] = 4; cost[i] = road === 1 ? 4 : road === 2 ? 5 : road === 3 ? 6 : (TC[tt] || 0); }
-  const PASSV = new Set([26, 5, 65, 66, 67, 68, 69, 93, 79, 76, 101, 12, 29, 82, 86, 81, 59, 62, 33, 219, 9, 212, 215, 43, 44, 45, 103, 111]);
+  // walk-through entrances: towns, teleports, garrisons, gates, and pickups that vanish once taken; every other visitable is visited from a neighbouring tile and is goal-only
+  const PASSV = new Set([26, 5, 65, 66, 67, 68, 69, 93, 79, 76, 101, 12, 29, 82, 86, 81, 59, 62, 33, 219, 9, 212, 215, 43, 44, 45, 103, 111, 98, 77]);
+  // engine rule: an entrance cannot be entered from the three tiles above it, except creatures, heroes, artifacts, resources (template type 2-5) and a few classes
+  const FROM_TOP = new Set([29, 82, 86, 11, 59, 8, 111, 33, 219, 81, 12, 9, 212, 215, 22]);
+  const noTop = new Uint8Array(2 * NN);
   const blocked = new Uint8Array(2 * NN), visit = new Uint8Array(2 * NN), vpass = new Uint8Array(2 * NN), vmon = new Uint8Array(2 * NN);
   const tiles = (o, mask, inv, fn) => { const [x, y, z] = o.pos; for (let i = 0; i < 6; i++) for (let j = 0; j < 8; j++) { const bit = (mask[i] >> j) & 1; if ((bit === 0) === inv) { const tx = x - (7 - j), ty = y - (5 - i); if (tx >= 0 && ty >= 0 && tx < N && ty < N) fn(z * NN + ty * N + tx); } } };
-  for (const o of O) { tiles(o, o.t.block, true, i => { blocked[i] = 1; }); tiles(o, o.t.visit, false, i => { visit[i] = 1; if (PASSV.has(o.t.id)) vpass[i] = 1; if (MON.has(o.t.id)) vmon[i] = 1; }); }
+  for (const o of O) { tiles(o, o.t.block, true, i => { blocked[i] = 1; }); tiles(o, o.t.visit, false, i => { visit[i] = 1; if (PASSV.has(o.t.id)) vpass[i] = 1; if (MON.has(o.t.id)) vmon[i] = 1; if (!(o.t.type >= 2 && o.t.type <= 5) && !FROM_TOP.has(o.t.id)) noTop[i] = 1; }); }
   for (let i = 0; i < 2 * NN; i++) { if (G[i] === 4) continue; if (blocked[i]) G[i] = 1; if (visit[i]) G[i] = 3; if (vpass[i]) G[i] = 5; if (vmon[i]) G[i] = 6; }
-  const grid = [0, 1].map(z => { const b = Buffer.alloc(NN); for (let i = 0; i < NN; i++) b[i] = G[z * NN + i] | (cost[z * NN + i] << 3) | (water[z * NN + i] << 6); return b.toString('base64'); });
+  const grid = [0, 1].map(z => { const b = Buffer.alloc(NN); for (let i = 0; i < NN; i++) b[i] = G[z * NN + i] | (cost[z * NN + i] << 3) | (water[z * NN + i] << 6) | (visit[z * NN + i] && noTop[z * NN + i] ? 128 : 0); return b.toString('base64'); });
 
   // ---- specials, monsters, towns, keys, owners, seers ----
   const PASS = { 33: 'garrison', 219: 'garrison', 9: 'borderGuard', 212: 'borderGate', 215: 'questGuard', 43: 'monoIn', 44: 'monoOut', 45: 'mono2', 103: 'subGate', 111: 'whirl' };
