@@ -830,12 +830,13 @@ function refreshQuests() {
   const hqv = document.getElementById('q-hq').value;
   for (const p of QUESTS) {
     const a = qstate(p); if (a === 'impossible') continue;
-    if (p.hid !== undefined && hqv !== 'all') { const c = heroAccess(p.hid).c; if ((hqv === 'mine' && c !== 'yours') || c === 'taken') { heroHidden++; continue; } }
+    const gha = p.hid !== undefined ? heroAccess(p.hid) : null;
+    if (gha && hqv !== 'all' && ((hqv === 'mine' && gha.c !== 'yours') || gha.c === 'taken' || (hqv === 'avail' && gha.c === 'air'))) { heroHidden++; continue; }
     const g = gone(p.oi) || a === 'done'; const d = g || !!prog.done[spKey(p)]; if (d) done++;
     const txt = `${p.q} ${p.x} ${p.y} ${p.z ? 'underground' : 'surface'} ${p.k === 'questGate' ? 'gate' : 'guard'}`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) continue; n++;
     const li = document.createElement('li'); li.className = d ? 'done' : ''; li.dataset.i = p.i;
-    li.innerHTML = `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done"><span class="q">${p.q} <span class="rw">&rarr; opens the passage</span></span><span class="m" style="grid-column:2">${p.k === 'questGate' ? 'Quest Gate' : 'Quest Guard'} (${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'}${gone(p.oi) ? ' \u00b7 passed (from save)' : a === 'done' ? ' \u00b7 yours' : ''}</span>`;
+    li.innerHTML = `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done"><span class="q">${p.q} <span class="rw">&rarr; opens the passage</span></span><span class="m" style="grid-column:2">${p.k === 'questGate' ? 'Quest Gate' : 'Quest Guard'} (${p.x}, ${p.y}) ${p.z ? 'Underground' : 'Surface'}${gone(p.oi) ? ' \u00b7 passed (from save)' : a === 'done' ? ' \u00b7 yours' : ''}${gha ? ' \u00b7 ' + gha.t : ''}</span>`;
     li.querySelector('input').addEventListener('change', e => { e.stopPropagation(); setDone(p, e.target.checked); });
     li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (p.z ? 'ug' : 'ow')) setLevel(p.z ? 'ug' : 'ow'); flyTo(p.x, p.y, Math.max(s, 1.2)); gmk.get(p.i).classList.add('active'); setTimeout(() => gmk.get(p.i).classList.remove('active'), 2500); });
     qlist.appendChild(li);
