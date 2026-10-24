@@ -360,7 +360,7 @@ select.sel{width:100%;padding:7px 8px;background:var(--bg);border:1px solid var(
       <div class="row"><label><input type="checkbox" id="o-keys" checked> Routing uses my keys</label><label><input type="checkbox" id="o-quests" checked> Routing uses quest progress</label><label><input type="checkbox" id="f-gd" checked> Show guards</label></div>
       <div class="keys" id="keys"></div>
       <div class="search"><input id="qq" type="search" placeholder="Filter quests (condition, reward, name, coords)" autocomplete="off" aria-label="Filter quests"></div>
-      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><select class="sel" id="q-hq" aria-label="Hero quests" title="Which &quot;be hero X&quot; quests to list"><option value="mine">Hero quests: my heroes</option><option value="avail" selected>Hero quests: heroes I can get</option><option value="all">Hero quests: all</option></select><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
+      <div class="row"><label><input type="checkbox" id="q-hide"> Hide done</label><select class="sel" id="q-hq" aria-label="Hero quests" title="Which &quot;be hero X&quot; quests to list"><option value="mine">Hero quests: my heroes</option><option value="avail" selected>Hero quests: obtainable heroes</option><option value="all">Hero quests: all</option></select><span class="count" id="qcount"></span><button class="btn" id="q-reset" style="padding:3px 8px">Reset all</button></div>
     </div>
     <ul id="qlist" role="listbox" aria-label="Quest guards"></ul>
   </div>
@@ -783,16 +783,22 @@ const COLORS = Object.keys(PCOL);
 const spKey = p => `${p.z},${p.x},${p.y}`;
 function saveProg() { try { localStorage.setItem('mi-progress2', JSON.stringify(progAll)); localStorage.setItem('mi-player', curPlayer); } catch (e) {} }
 const GUARDS = NAV.sp.map((p, i) => ({...p, i})).filter(p => /Guard|Gate/.test(p.k));
-// 'be hero X' quests: 'no' = the map never lets this colour have X, 'yours' = you hold X now, 'taken' = another player holds X now (can return to the tavern if it dies)
+// how this colour can get hero X: yours (held now), prison (still in a prison this colour can reach, per the map's flood fill), tavern (free, in the tavern pool and open to this colour),
+// taken (another player holds X now; it returns to the tavern if it dies), no (with a reason)
+const PRISON_OF = {}; for (const p of DATA.prisons || []) PRISON_OF[p.hid] = p;
 function heroAccess(hid) {
-  const mask = DATA.heroAvail ? DATA.heroAvail[hid] : undefined; if (mask !== undefined && !((mask >> curPlayer) & 1)) return 'no';
-  if (SAVE && gameOn()) { const h = SAVE.heroArts.find(x => x.id === hid); if (h && h.owner === curPlayer) return 'yours'; if (h && h.owner < 8) return 'taken:' + h.owner; }
-  return null;
+  const live = SAVE && gameOn();
+  if (live) { const h = SAVE.heroArts.find(x => x.id === hid); if (h && h.owner === curPlayer) return {c: 'yours', t: 'you have this hero'}; if (h && h.owner < 8) return {c: 'taken', t: 'hero held by ' + PLAYER[h.owner]}; }
+  const pr = PRISON_OF[hid];
+  if (pr && (!live || SAVE.present[pr.oi])) return (pr.reach >> curPlayer) & 1 ? {c: 'prison', t: `free from the prison at (${pr.x}, ${pr.y})${pr.z ? ' underground' : ''}`} : {c: 'no', t: 'prison not reachable for ' + PLAYER[curPlayer]};
+  const mask = DATA.heroAvail ? DATA.heroAvail[hid] : undefined; if (mask !== undefined && !((mask >> curPlayer) & 1)) return {c: 'no', t: 'hero not available to ' + PLAYER[curPlayer]};
+  if (DATA.heroAllowed && !((DATA.heroAllowed[hid >> 3] >> (hid & 7)) & 1)) return {c: 'no', t: 'hero not in the tavern pool'};
+  return {c: 'tavern', t: 'hire in a tavern'};
 }
 function qstate(p) {  // auto state of a quest guard for the chosen player: 'done' | 'impossible' | null
   if (!p.q) return null;
   if (p.q.startsWith('be player ')) return p.q.slice(10) === PLAYER[curPlayer] ? 'done' : 'impossible';
-  if (p.hid !== undefined) { const a = heroAccess(p.hid); return a === 'yours' ? 'done' : a === 'no' ? 'impossible' : null; }
+  if (p.hid !== undefined) { const a = heroAccess(p.hid).c; return a === 'yours' ? 'done' : a === 'no' ? 'impossible' : null; }
   return null;
 }
 const keyFromSave = c => !!SAVE && gameOn() && !!SAVE.keys && ((SAVE.keys[COLORS.indexOf(c)] >> curPlayer) & 1) === 1;
@@ -824,7 +830,7 @@ function refreshQuests() {
   const hqv = document.getElementById('q-hq').value;
   for (const p of QUESTS) {
     const a = qstate(p); if (a === 'impossible') continue;
-    if (hqv === 'mine' && p.hid !== undefined && heroAccess(p.hid) !== 'yours') { heroHidden++; continue; }
+    if (p.hid !== undefined && hqv !== 'all') { const c = heroAccess(p.hid).c; if ((hqv === 'mine' && c !== 'yours') || c === 'taken') { heroHidden++; continue; } }
     const g = gone(p.oi) || a === 'done'; const d = g || !!prog.done[spKey(p)]; if (d) done++;
     const txt = `${p.q} ${p.x} ${p.y} ${p.z ? 'underground' : 'surface'} ${p.k === 'questGate' ? 'gate' : 'guard'}`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) continue; n++;
@@ -837,13 +843,14 @@ function refreshQuests() {
   // Seer's Huts: one-time quests (done from the save when this colour completed the hut, or ticked by hand), then repeatable ones
   const seerItem = (sq, oneTime) => {
     if (/^be player /.test(sq.q) && sq.q !== 'be player ' + PLAYER[curPlayer]) return;
-    const ha = sq.hid !== undefined ? heroAccess(sq.hid) : null; const hq = document.getElementById('q-hq').value; if (sq.hid !== undefined && ((ha === 'no' && hq !== 'all') || (hq === 'mine' && ha !== 'yours'))) { heroHidden++; return; }
-    const hnote = ha === 'yours' ? ' \u00b7 you have this hero' : ha === 'no' ? ' \u00b7 hero not available to ' + PLAYER[curPlayer] : ha ? ' \u00b7 hero held by ' + PLAYER[+ha.slice(6)] : '';
+    const ha = sq.hid !== undefined ? heroAccess(sq.hid) : null; const hq = document.getElementById('q-hq').value;
+    if (ha && ((hq === 'mine' && ha.c !== 'yours') || (hq === 'avail' && !['yours', 'prison', 'tavern'].includes(ha.c)))) { heroHidden++; return; }
+    const hnote = ha ? ' \u00b7 ' + ha.t : '';
     const g = oneTime && !!(seerMask(sq.oi) >> curPlayer & 1), key = 'seer:' + sq.oi + ':' + sq.i, d = oneTime && (g || !!prog.done[key]);
     if (oneTime) { seerTotal++; if (d) done++; }
     const txt = `${sq.q} ${sq.r} ${sq.n} ${sq.x} ${sq.y} ${sq.z ? 'underground' : 'surface'} seer`.toLowerCase();
     if ((t && !txt.includes(t)) || (qhide.checked && d)) return; n++;
-    const li = document.createElement('li'); li.className = d || (ha && ha !== 'yours') ? 'done' : '';
+    const li = document.createElement('li'); li.className = d || (ha && (ha.c === 'taken' || ha.c === 'no')) ? 'done' : '';
     li.innerHTML = `${oneTime ? `<input type="checkbox" ${d ? 'checked' : ''} ${g ? 'disabled' : ''} aria-label="done">` : '<span class="sp"></span>'}<span class="q">${sq.q} <span class="rw">&rarr; ${sq.r}</span></span><span class="m" style="grid-column:2">Seer's Hut${sq.n ? ' ' + sq.n : ''} (${sq.x}, ${sq.y}) ${sq.z ? 'Underground' : 'Surface'}${g ? ' \u00b7 done (from save)' : ''}${hnote}</span>`;
     const cb = li.querySelector('input'); if (cb) cb.addEventListener('change', e => { e.stopPropagation(); prog.done[key] = e.target.checked; if (!e.target.checked) delete prog.done[key]; saveProg(); refreshQuests(); });
     li.addEventListener('click', e => { if (e.target.tagName === 'INPUT') return; if (level !== (sq.z ? 'ug' : 'ow')) setLevel(sq.z ? 'ug' : 'ow'); flyTo(sq.x, sq.y, Math.max(s, 1.2)); });
@@ -868,8 +875,8 @@ class Heap { constructor() { this.k = []; this.v = []; } push(k, v) { const K = 
 function route(s, g, opt) {
   const dist = new Float64Array(2 * NN).fill(Infinity), prev = new Int32Array(2 * NN).fill(-1), via = new Int8Array(2 * NN);
   const h = new Heap(); dist[s] = 0; h.push(0, s);
-  // dy = +1 means moving down, i.e. entering from the tile above; c 3 = building visited from a neighbour, never walked through
-  const enter = (t, isGoal, dy) => { const c = code(t); if (c === 1 || c === 4) return false; if (c === 2) return opt.boat; if (dy === 1 && (grid[t >= NN ? 1 : 0][t % NN] & 128)) return false; if (c === 3) return isGoal;
+  // dy = +1 means moving down, i.e. entering from the tile above, which most entrances forbid; a hero stands on a building's entrance and can walk on from it
+  const enter = (t, isGoal, dy) => { const c = code(t); if (c === 1 || c === 4) return false; if (c === 2) return opt.boat; if (dy === 1 && (grid[t >= NN ? 1 : 0][t % NN] & 128)) return false;
     const si = spAt[t]; if (si >= 0) { const p = NAV.sp[si]; if (!gone(p.oi)) { if (opt.keys && (p.k === 'borderGuard' || p.k === 'borderGate') && !hasKey(p.c)) return isGoal; if (opt.quests && (p.k === 'questGuard' || p.k === 'questGate') && isLocked(p)) return isGoal; } }
     return true; };
   const pen = t => { let p = 0; if (opt.mon && ((guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)) || (code(t) === 6 && guard[t] >= 0 && !gone(NAV.mon[guard[t]].oi)))) p += 4000; const si = spAt[t]; if (opt.gate && si >= 0 && /Guard|Gate|garrison/.test(NAV.sp[si].k)) p += 6000; return p; };

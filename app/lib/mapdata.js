@@ -103,10 +103,10 @@ function build(m, gd) {
   const G = new Uint8Array(2 * NN), cost = new Uint8Array(2 * NN), water = new Uint8Array(2 * NN);
   const TC = [0, 2, 0, 2, 3, 1, 0, 0, 0, 0, 0, 1];
   for (let i = 0; i < m.levels * NN; i++) { const tt = T[7 * i], road = T[7 * i + 4] & 7; if (tt === 8) { G[i] = 2; water[i] = 1; } else if (tt === 9) G[i] = 4; cost[i] = road === 1 ? 4 : road === 2 ? 5 : road === 3 ? 6 : (TC[tt] || 0); }
-  // walk-through entrances: towns, teleports, garrisons, gates, and pickups that vanish once taken; every other visitable is visited from a neighbouring tile and is goal-only
+  // pass-through set: towns, teleports, garrisons, gates, and pickups that vanish once taken; other buildings (code 3) are stood on when visited and can be walked on from
   const PASSV = new Set([26, 5, 65, 66, 67, 68, 69, 93, 79, 76, 101, 12, 29, 82, 86, 81, 59, 62, 33, 219, 9, 212, 215, 43, 44, 45, 103, 111, 98, 77]);
   // engine rule: an entrance cannot be entered from the three tiles above it, except creatures, heroes, artifacts, resources (template type 2-5) and a few classes
-  const FROM_TOP = new Set([29, 82, 86, 11, 59, 8, 111, 33, 219, 81, 12, 9, 212, 215, 22]);
+  const FROM_TOP = new Set([29, 82, 86, 11, 59, 8, 111, 33, 219, 81, 12, 9, 212, 215, 22, 26]);
   const noTop = new Uint8Array(2 * NN);
   const blocked = new Uint8Array(2 * NN), visit = new Uint8Array(2 * NN), vpass = new Uint8Array(2 * NN), vmon = new Uint8Array(2 * NN);
   const tiles = (o, mask, inv, fn) => { const [x, y, z] = o.pos; for (let i = 0; i < 6; i++) for (let j = 0; j < 8; j++) { const bit = (mask[i] >> j) & 1; if ((bit === 0) === inv) { const tx = x - (7 - j), ty = y - (5 - i); if (tx >= 0 && ty >= 0 && tx < N && ty < N) fn(z * NN + ty * N + tx); } } };
@@ -190,11 +190,44 @@ function build(m, gd) {
   const opos = Buffer.alloc(3 * O.length); O.forEach((o, i) => { opos[3 * i] = o.pos[0]; opos[3 * i + 1] = o.pos[1]; opos[3 * i + 2] = o.pos[2]; });
   const hotaIcons = {}; try { const have = new Set(fs.readdirSync(path.join(LIB, '..', 'hota', 'icons')).map(f => f.toLowerCase())); for (const [ident, idx] of Object.entries(MAP.artifacts)) if (have.has(ident.toLowerCase() + '.png')) hotaIcons[idx] = fs.readdirSync(path.join(LIB, '..', 'hota', 'icons')).find(f => f.toLowerCase() === ident.toLowerCase() + '.png'); } catch (e) {}
   const perHeroObjs = perHeroList(O, entry);
+  // ---- per-colour reachability from the map's starting state (runs once per map) ----
+  // Flood from each colour's starting heroes and towns: boats and teleports allowed, monsters and ordinary quests assumed doable,
+  // quest guards/gates whose condition this colour can never meet are walls, border guards open once a keymaster tent of that colour is reached.
+  const reachMask = new Uint8Array(2 * NN);
+  {
+    const spAt = new Int32Array(2 * NN).fill(-1); sp.forEach((d, i) => { spAt[d.z * NN + d.y * N + d.x] = i; });
+    const links = sp.map(() => []); const byKey = {};
+    sp.forEach((d, i) => { const k = d.k === 'monoIn' || d.k === 'monoOut' ? 'm' + d.s : d.k === 'mono2' ? 't' + d.s : d.k; (byKey[k] = byKey[k] || []).push(i); });
+    sp.forEach((d, i) => { if (d.k === 'monoIn') links[i] = (byKey['m' + d.s] || []).filter(j => sp[j].k === 'monoOut'); else if (d.k === 'mono2') links[i] = (byKey['t' + d.s] || []).filter(j => j !== i); else if (d.k === 'whirl') links[i] = (byKey.whirl || []).filter(j => j !== i); });
+    { const g0 = (byKey.subGate || []).filter(i => sp[i].z === 0), g1 = (byKey.subGate || []).filter(i => sp[i].z === 1); const pairs = [];
+      for (const a of g0) for (const b of g1) pairs.push([Math.hypot(sp[a].x - sp[b].x, sp[a].y - sp[b].y), a, b]);
+      pairs.sort((p, q) => p[0] - q[0]); const used = new Set(); for (const [, a, b] of pairs) if (!used.has(a) && !used.has(b)) { used.add(a); used.add(b); links[a] = [b]; links[b] = [a]; } }
+    const tentAt = new Map(); keys.forEach(k => { for (const o of O) if (o.t.id === 10 && o.pos[2] === k.z) { const e = entry(o); if (e[0] === k.x && e[1] === k.y) tentAt.set(k.z * NN + e[1] * N + e[0], k.c); } });
+    const impossible = (q, p) => q && ((q.m === 9 && q.player !== p) || (q.m === 8 && m.heroAvail && m.heroAvail[q.hero] && !((m.heroAvail[q.hero].mask >> p) & 1)));
+    for (let p = 0; p < 8; p++) {
+      const starts = []; O.forEach(o => { if (((o.t.id === 34 || o.t.id === 70) && o.owner === p) || ((o.t.id === 98 || o.t.id === 77) && o.owner === p)) { const e = entry(o); starts.push(e[2] * NN + e[1] * N + e[0]); } });
+      if (!starts.length) continue;
+      const have = new Set(); let R;
+      for (let pass = 0; pass < 10; pass++) {
+        R = new Uint8Array(2 * NN); const q = []; for (const st of starts) { R[st] = 1; q.push(st); }
+        const tryEnter = (t, dy) => { if (R[t]) return; const c = G[t]; if (c === 1 || c === 4) return; if (dy === 1 && visit[t] && noTop[t]) return;
+          const si = spAt[t]; if (si >= 0) { const d = sp[si]; if ((d.k === 'borderGuard' || d.k === 'borderGate') && d.c && !have.has(d.c)) return; if ((d.k === 'questGuard' || d.k === 'questGate') && impossible(O[d.oi].quest, p)) return; }
+          R[t] = 1; if (tentAt.has(t)) have.add(tentAt.get(t)); q.push(t); };
+        const before = have.size;
+        while (q.length) { const u = q.pop(); const z = u >= NN ? 1 : 0, r = u % NN, ux = r % N, uy = (r - ux) / N;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = ux + dx, y = uy + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue; tryEnter(z * NN + y * N + x, dy); }
+          const si = spAt[u]; if (si >= 0) for (const j of links[si]) tryEnter(sp[j].z * NN + sp[j].y * N + sp[j].x, 0); }
+        if (have.size === before) break;
+      }
+      for (let i = 0; i < 2 * NN; i++) if (R[i]) reachMask[i] |= 1 << p;
+    }
+  }
+  const prisons = []; O.forEach((o, oi) => { if (o.t.id === 62) { const e = entry(o); prisons.push({ oi, hid: o.hero, x: e[0], y: e[1], z: e[2], reach: reachMask[e[2] * NN + e[1] * N + e[0]] }); } });
   const data = {
     size: N, tile: 1008, name: m.name, levels: m.levels, arts, terrain: T.toString('base64'), hotaIcons, tile0: tile0.toString('base64'), nobj: O.length, opos: opos.toString('base64'),
     artnames: AN, artdesc: AD, skills, combos: COMBOS, spellNames: SP.slice(0, 70),
     nav: { own, seers, counts, grid, sp, mon, towns, keys },
-    seerQ, heroAvail: Object.fromEntries(Object.entries(m.heroAvail || {}).map(([id, h]) => [id, h.mask])),
+    seerQ, prisons, heroAllowed: Array.from(m.heroAllowed || []), heroAvail: Object.fromEntries(Object.entries(m.heroAvail || {}).map(([id, h]) => [id, h.mask])),
     perHero: PERHERO.map(([id, sub, n, b]) => ({ n, b })), perHeroObjs,
   };
   return { data, oinfo, defNames, placements, names };
