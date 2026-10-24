@@ -75,7 +75,7 @@ h1{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:18px;letter-spacin
 .hv h3{margin:10px 0 4px;font-size:13px;color:var(--gold);display:flex;justify-content:space-between;} .hv h3 .st{font-size:11px;color:var(--muted);font-weight:500;}
 .hv .it{display:grid;grid-template-columns:12px 1fr auto;gap:6px;align-items:center;font-size:12.5px;padding:3px 4px;border-radius:4px;cursor:pointer;} .hv .it:hover{background:rgba(255,255,255,.05);}
 .hv .it .dot{width:9px;height:9px;border-radius:50%;background:#e8a24a;} .hv .it.done .dot{background:#6fd36f;} .hv .it.done .n{opacity:.55;}
-.hv .it .w{color:var(--muted);font-size:11px;} .hv .it .go{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;padding:0 6px;} .hv .it .go:hover{color:var(--gold);border-color:var(--gold);}
+.hv .it .w{color:var(--muted);font-size:11px;} .hv .it.dim .dot{background:#777;} .hv .it.dim .n{opacity:.6;} .hv .it .go{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;padding:0 6px;} .hv .it .go:hover{color:var(--gold);border-color:var(--gold);}
 .hv .sum{font-size:12px;color:var(--text);margin:6px 0 2px;} .hv .grid{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:12px;margin-bottom:6px;} .hv .grid b{color:var(--gold);text-align:right;}
 .mk.sk{border-color:#9be37a;} .mk.sk span{color:#9be37a;} .mk.sk span i{font-style:normal;color:var(--text);opacity:.8;}
 .mk.spl{border-color:#c9a2ff;} .mk.spl span{color:#c9a2ff;} .mk.spl span i{font-style:normal;color:var(--text);opacity:.8;}
@@ -1027,7 +1027,9 @@ function refreshCombos() {
 
 // ===== per-hero bonuses =====
 const HVK = DATA.perHero, HVO = DATA.perHeroObjs;
-const TOWN_BONUS = {2: ['Wall of Knowledge', '+1 Knowledge'], 3: ['Order of Fire', '+1 Spell Power'], 5: ['Academy of Battle Scholars', '+1000 experience'], 6: ['Hall of Valhalla', '+1 Attack'], 7: ['Cage of Warlords', '+1 Defense']};
+const TOWN_BONUS = {2: ['Wall of Knowledge', '+1 Knowledge', 22], 3: ['Order of Fire', '+1 Spell Power', 22], 5: ['Academy of Battle Scholars', '+1000 experience', 23], 6: ['Hall of Valhalla', '+1 Attack', 23], 7: ['Cage of Warlords', '+1 Defense', 17]};
+const isBuilt = (ti, bit) => !!ti && ((ti.built[bit >> 5] >>> (bit & 31)) & 1) === 1;
+const SPN = DATA.spellNames || [];
 const FACN = ['Castle', 'Rampart', 'Tower', 'Inferno', 'Necropolis', 'Dungeon', 'Stronghold', 'Fortress', 'Conflux', 'Cove', 'Factory', 'Bulwark'];
 const hvmk = HVO.map(e => { const el = document.createElement('div'); el.className = 'mk hv' + (e.x > N - 12 ? ' flip' : ''); el.style.left = e.x * 32 + 'px'; el.style.top = e.y * 32 + 'px'; const sp = document.createElement('span'); sp.textContent = HVK[e.k].n; el.appendChild(sp); marks[e.z ? 'ug' : 'ow'].appendChild(el); return el; });
 let hvHero = null; try { hvHero = +localStorage.getItem('hc-hvhero') || null; } catch (e) {}
@@ -1038,7 +1040,7 @@ function hvState() {
   if (!mine.length) return {mine};
   const h = mine.find(x => x.id === hvHero) || mine[0];
   const visited = e => ((h.visit[e.k] >>> e.i) & 1) === 1;
-  const towns = NAV.towns.map((t, i) => ({...t, i, fac: SAVE.townFac[i]})).filter(t => TOWN_BONUS[t.fac]).map(t => ({...t, done: ((h.towns[t.i >> 5] >>> (t.i & 31)) & 1) === 1}));
+  const towns = NAV.towns.map((t, i) => ({...t, i, fac: SAVE.townFac[i]})).filter(t => TOWN_BONUS[t.fac]).map(t => ({...t, done: ((h.towns[t.i >> 5] >>> (t.i & 31)) & 1) === 1, built: SAVE.townInfo ? isBuilt(SAVE.townInfo[t.i], TOWN_BONUS[t.fac][2]) : true}));
   return {mine, h, visited, towns};
 }
 function paintHvMarks() {
@@ -1053,7 +1055,7 @@ function refreshHeroes() {
   const h = st.h, pos = SAVE.heroes.find(x => x.id === h.id);
   const open = {}; const add = (b, n) => { open[b] = (open[b] || 0) + n; };
   let html = `<div class="row"><select class="sel" id="hv-sel" aria-label="Hero">${st.mine.map(x => `<option value="${x.id}"${x.id === h.id ? ' selected' : ''}>${x.name}</option>`).join('')}</select><label><input type="checkbox" id="hv-hide"${hvHide ? ' checked' : ''}> Hide visited</label></div>`;
-  const item = (x, y, z, name, done, extra) => (hvHide && done) ? '' : `<div class="it${done ? ' done' : ''}" data-x="${x}" data-y="${y}" data-z="${z}"><span class="dot"></span><span class="n">${name}<br><span class="w">${z ? 'Underground' : 'Surface'} ${x}, ${y}${extra ? ' \u00b7 ' + extra : ''}${done ? ' \u00b7 visited' : ''}</span></span>${done ? '<span></span>' : '<button class="go" title="Route from this hero">&rarr;</button>'}</div>`;
+  const item = (x, y, z, name, done, extra, dim) => (hvHide && (done || dim)) ? '' : `<div class="it${done ? ' done' : ''}${dim ? ' dim' : ''}" data-x="${x}" data-y="${y}" data-z="${z}"><span class="dot"></span><span class="n">${name}<br><span class="w">${z ? 'Underground' : 'Surface'} ${x}, ${y}${extra ? ' \u00b7 ' + extra : ''}${done ? ' \u00b7 visited' : ''}</span></span>${done ? '<span></span>' : '<button class="go" title="Route from this hero">&rarr;</button>'}</div>`;
   let body = '';
   HVK.forEach((kd, k) => {
     const list = HVO.filter(e => e.k === k && !gone(e.oi)); if (!list.length) return;
@@ -1062,8 +1064,18 @@ function refreshHeroes() {
   });
   if (st.towns.length) {
     const done = st.towns.filter(t => t.done).length;
-    body += `<h3><span>Town buildings <span class="st">once per hero, building must be built</span></span><span class="st">${done} / ${st.towns.length}</span></h3>` + st.towns.map(t => item(t.x, t.y, t.z, `${t.n} (${FACN[t.fac]})`, t.done, TOWN_BONUS[t.fac][0] + ', ' + TOWN_BONUS[t.fac][1])).join('');
-    for (const t of st.towns) if (!t.done) add(TOWN_BONUS[t.fac][1] + ' (town)', 1);
+    body += `<h3><span>Town buildings <span class="st">once per hero</span></span><span class="st">${done} / ${st.towns.length}</span></h3>` + st.towns.map(t => item(t.x, t.y, t.z, `${t.n} (${FACN[t.fac]})`, t.done, TOWN_BONUS[t.fac][0] + ', ' + TOWN_BONUS[t.fac][1] + (t.built || t.done ? '' : ' \u00b7 not built yet'), !t.built && !t.done)).join('');
+    for (const t of st.towns) if (!t.done && t.built) add(TOWN_BONUS[t.fac][1] + ' (town)', 1);
+  }
+  if (SAVE.townInfo) {
+    // H3 rule: spellbook needed; levels 1-2 free, 3/4/5 need Basic/Advanced/Expert Wisdom
+    const maxL = h.book ? 2 + Math.min(3, h.wisdom) : 0;
+    const rows = NAV.towns.map((t, i) => { const ti = SAVE.townInfo[i]; const now = [], later = []; ti.spells.forEach((l, L) => { for (const sp of l) if (!h.known[sp]) (L < maxL ? now : later).push(sp); }); return {t, ti, now, later}; }).filter(x => x.now.length || x.later.length).sort((a, b) => (a.ti.owner !== curPlayer) - (b.ti.owner !== curPlayer) || b.now.length - a.now.length || b.later.length - a.later.length);
+    const n = rows.filter(x => x.now.length).length;
+    body += `<h3><span>Mage guilds <span class="st">${h.book ? (h.wisdom ? ['', 'Basic', 'Advanced', 'Expert'][h.wisdom] + ' Wisdom, up to level ' + maxL : 'no Wisdom, up to level 2') : 'no spellbook'}</span></span><span class="st">${n} town${n === 1 ? '' : 's'}</span></h3>`;
+    const own = o => o === curPlayer ? 'yours' : o < 8 ? PLAYER[o] : 'neutral';
+    body += rows.map(x => item(x.t.x, x.t.y, x.t.z, `${x.t.n} <span class="w">(${own(x.ti.owner)})</span>`, false, (x.now.length ? x.now.length + ' new: ' + x.now.map(sp => SPN[sp]).join(', ') : 'nothing new now') + (x.later.length ? ' \u00b7 with more Wisdom: ' + x.later.map(sp => SPN[sp]).join(', ') : ''), !x.now.length)).join('');
+    const tot = new Set(rows.flatMap(x => x.now)).size; if (tot) add('new spells in mage guilds', tot);
   }
   const sum = Object.entries(open).map(([b, n]) => `<b>${n}\u00d7</b><span>${b}</span>`).join('');
   html += `<p class="sum">${pos ? `${h.name} at ${pos.z ? 'Underground' : 'Surface'} ${pos.x}, ${pos.y}.` : `${h.name} is not on the map (in a town or garrison).`} Still open:</p>${sum ? `<div class="grid">${sum}</div>` : '<p class="hint2">nothing</p>'}` + body;
@@ -1197,15 +1209,31 @@ function parseSave(buf) {
   for (let b = objEnd; b < raw.length - 100000; b++) {
     if (u32(b) === C.mine && u16(b + 4 + C.mine * 62) === C.dwelling && raw[b + 6 + C.mine * 62 + C.dwelling * 75] === C.garrison) { chain = b; break; }
   }
-  const owner = new Map();
+  const owner = new Map(); let townInfo = null;
   if (chain >= 0) {
     const mb = chain + 4, db = mb + C.mine * 62 + 2, gb = db + C.dwelling * 75 + 1, ge = gb + C.garrison * 61;
+    townInfo = readTowns(ge);
     for (const w of NAV.own) {
       if (w.k === 'mine') owner.set(w.oi, raw[mb + ownRank[w.oi] * 62]);
       else if (w.k === 'dwelling') owner.set(w.oi, raw[db + ownRank[w.oi] * 75]);
       else if (w.k === 'garrison') owner.set(w.oi, raw[gb + ownRank[w.oi] * 61]);
       else if (w.k === 'town') { const nm = cp1251(w.n); const p = findBytes(raw, [nm.length & 255, nm.length >> 8, ...nm], ge, ge + 400000); if (p >= 0) owner.set(w.oi, raw[p - 69]); }
     }
+  }
+  // towns: one record per town in map order, 567 bytes plus the name (u16 length + text); find the first by walking the whole chain
+  function readTowns(from) {
+    const NTW = NAV.towns.length; if (!NTW) return null;
+    const okName = p => { const L = u16(p); if (L < 1 || L > 30) return false; for (let k = 0; k < L; k++) if (raw[p + 2 + k] < 32) return false; return true; };
+    const sameName = (p, s) => { if (!s || /[^\x20-\x7e]/.test(s)) return true; if (u16(p) !== s.length) return false; for (let k = 0; k < s.length; k++) if (raw[p + 2 + k] !== s.charCodeAt(k)) return false; return true; };
+    for (let p = from; p < from + 400000 && p < raw.length - 600 * NTW; p++) {
+      if (!okName(p) || !sameName(p, NAV.towns[0].cn)) continue;
+      let q = p, ok = true; const at = [];
+      for (let i = 0; i < NTW; i++) { if (!okName(q) || !sameName(q, NAV.towns[i].cn)) { ok = false; break; } at.push(q); q += 567 + u16(q); }
+      if (!ok) continue;
+      return at.map(n => { const b = n + 2 + u16(n); const slots = Array.from(raw.subarray(b + 84, b + 89));
+        return {owner: raw[n - 69], slots, built: [u32(b + 97), u32(b + 101)], spells: slots.map((c, L) => { const a = []; for (let k = 0; k < c && k < 6; k++) { const v = dv.getInt32(b + 113 + L * 24 + k * 4, true); if (v >= 0 && v < 70) a.push(v); } return a; })}; });
+    }
+    return null;
   }
   // seer huts: anchor each record by its first quest text, state byte sits before the 4-byte id and a long zero tail
   const seer = new Map();
@@ -1265,7 +1293,8 @@ function parseSave(buf) {
   }
   // once-per-hero visit fields in each hero record: ten classic 32-bit sets at +53, HotA Colosseum +1072, Hermit's Shack +1084, Gazebo +1088; towns whose bonus building the hero used: 48-bit set at +1062 (town order = map order)
   const HV_OFF = [53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 1072, 1084, 1088];
-  const heroArts = Object.entries(hinfo).map(([id, h]) => ({id: +id, owner: h.owner, name: h.name, arts: h.arts, visit: HV_OFF.map(o => u32(h.t + o)), towns: [u32(h.t + 1062), u16(h.t + 1066)]}));
+  // spells learned: 70 flag bytes at +242; secondary skill levels: 28 bytes at +182 (Wisdom = 7); spellbook = artifact 0 in slot 17
+  const heroArts = Object.entries(hinfo).map(([id, h]) => ({id: +id, owner: h.owner, name: h.name, arts: h.arts, visit: HV_OFF.map(o => u32(h.t + o)), towns: [u32(h.t + 1062), u16(h.t + 1066)], known: raw.slice(h.t + 242, h.t + 312), wisdom: raw[h.t + 182 + 7], book: u32(h.t + 382 + 8 * 17) === 0}));
   // town factions as resolved in the game (random towns included): first tile at or above the entrance that holds a town
   const townFac = NAV.towns.map(t => { for (const [dx, dy] of [[0, 0], [0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0]]) { const x = t.x + dx, y = t.y + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue; const qq = tileOff[t.z * NN + y * N + x]; if (u16(qq + 8) === 98) return u16(qq + 10); } return -1; });
   // keys: 8 bytes after the last hero record, one per key colour, bit per player; a constant follows them
@@ -1278,7 +1307,7 @@ function parseSave(buf) {
     const n = NAV.mon.length, first = p - 16 - 33 * (n - 1);
     if (p > 0 && first > 0) { let ok = 0; for (let i = 0; i < n; i++) if (u32(first + 33 * i + 16) === 100) ok++;
       if (ok > 0.9 * n) { count = new Map(); for (let i = 0; i < n; i++) count.set(NAV.mon[i].oi, u32(first + 33 * monRank[i])); } } }
-  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count, matched, townFac};
+  return {present, fog, heroes, owner, seer, tplNames, defOf, heroArts, keys, count, matched, townFac, townInfo};
 }
 const OPOS = Uint8Array.from(atob(DATA.opos), c => c.charCodeAt(0));
 function cp1251(str) { const out = []; for (const ch of str) { const c = ch.charCodeAt(0); out.push(c < 128 ? c : 63); } return out; }

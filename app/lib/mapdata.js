@@ -117,7 +117,7 @@ function build(m, gd) {
       if (d.k) { if ((id === 9 || id === 212) && sub < 8) d.c = KEYCOL[sub]; if (o.quest) d.q = o.quest.m ? mission(o.quest) : 'no condition'; if (id >= 43 && id <= 45) d.c = 'channel ' + sub; sp.push(d); }
     } else if (MON.has(id)) mon.push({ x, y, z, n: id === 54 ? cre(sub, o.count) : 'random monster' + (id > 71 && id < 76 ? ' lvl ' + (id - 71) : id >= 162 ? ' lvl ' + (id - 157) : ''), oi });
     else if (id === 10 && sub < 8) keys.push({ x, y, z, c: KEYCOL[sub] });
-    if (id === 98 || id === 77) towns.push({ oi, x: e[0], y: e[1], z, n: o.name || (id === 77 ? 'Random town' : FAC[sub] || 'Town'), f: id === 98 && sub < FAC.length ? FAC[sub] : 'random', o: o.owner < 8 ? COL[o.owner] : 'neutral' });
+    if (id === 98 || id === 77) towns.push({ oi, x: e[0], y: e[1], z, cn: o.name || '', n: o.name || (id === 77 ? 'Random town' : FAC[sub] || 'Town'), f: id === 98 && sub < FAC.length ? FAC[sub] : 'random', o: o.owner < 8 ? COL[o.owner] : 'neutral' });
     const ow = o.owner !== undefined && o.owner < 8 ? o.owner : 255;
     if (id === 53 || id === 220) own.push({ oi, k: 'mine', x: e[0], y: e[1], z, n: MINE[Math.min(sub, 7)], o: ow });
     else if (id === 42) own.push({ oi, k: 'mine', x: e[0], y: e[1], z, n: 'Lighthouse', o: ow });
@@ -180,7 +180,7 @@ function build(m, gd) {
   const perHeroObjs = perHeroList(O, entry);
   const data = {
     size: N, tile: 1008, name: m.name, levels: m.levels, arts, terrain: T.toString('base64'), hotaIcons, tile0: tile0.toString('base64'), nobj: O.length, opos: opos.toString('base64'),
-    artnames: AN, artdesc: AD, skills, combos: COMBOS,
+    artnames: AN, artdesc: AD, skills, combos: COMBOS, spellNames: SP.slice(0, 70),
     nav: { own, seers, counts, grid, sp, mon, towns, keys },
     perHero: PERHERO.map(([id, sub, n, b]) => ({ n, b })), perHeroObjs,
   };
